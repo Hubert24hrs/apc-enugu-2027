@@ -760,6 +760,15 @@ ul {
     font-size: 0.9rem;
 }
 
+.leader-org {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-top: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 /* News Section */
 .news {
     background: var(--light-gray);
