@@ -450,7 +450,7 @@ document.addEventListener('click', function (e) {
 document.addEventListener('DOMContentLoaded', function () {
     const membershipForm = document.getElementById('membershipForm');
     if (membershipForm) {
-        membershipForm.addEventListener('submit', async function (e) {
+        membershipForm.addEventListener('submit', function (e) {
             e.preventDefault();
 
             // Collect form data
@@ -474,48 +474,33 @@ document.addEventListener('DOMContentLoaded', function () {
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
             submitBtn.disabled = true;
 
-            try {
-                // Submit to API
-                const response = await fetch('api/submit-membership.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
+            // Simulate form submission (replace with actual API call when deployed)
+            setTimeout(() => {
+                // Show success message
+                const modalBody = document.querySelector('#membershipModal .modal-content');
+                modalBody.innerHTML = `
+                    <div style="padding: 4rem 2rem; text-align: center;">
+                        <div style="font-size: 5rem; margin-bottom: 1.5rem;">✅</div>
+                        <h2 style="color: #00A859; margin-bottom: 1rem;">Registration Successful!</h2>
+                        <p style="color: #666; font-size: 1.1rem; max-width: 400px; margin: 0 auto 2rem; line-height: 1.6;">
+                            Thank you for registering with APC GAT 2027 Enugu State Chapter. 
+                            Your membership application has been received.
+                        </p>
+                        <p style="background: #f0f8f0; padding: 1rem; border-radius: 10px; margin-bottom: 2rem;">
+                            <strong>Membership No:</strong> GAT2027/ENU/${Date.now().toString().slice(-6)}<br>
+                            <small>Please save this number for future reference</small>
+                        </p>
+                        <button onclick="closeMembershipModal(); location.reload();" 
+                            style="padding: 1rem 2rem; background: #00A859; color: white; border: none; border-radius: 10px; font-size: 1rem; cursor: pointer;">
+                            <i class="fas fa-check"></i> Done
+                        </button>
+                    </div>
+                `;
 
-                const result = await response.json();
+                // Log data (in production, send to server)
+                console.log('Membership Registration:', data);
 
-                if (result.success) {
-                    // Show success message
-                    const modalBody = document.querySelector('#membershipModal .modal-content');
-                    modalBody.innerHTML = `
-                        <div style="padding: 4rem 2rem; text-align: center;">
-                            <div style="font-size: 5rem; margin-bottom: 1.5rem;">✅</div>
-                            <h2 style="color: #00A859; margin-bottom: 1rem;">Registration Successful!</h2>
-                            <p style="color: #666; font-size: 1.1rem; max-width: 400px; margin: 0 auto 2rem; line-height: 1.6;">
-                                Thank you for registering with APC GAT 2027 Enugu State Chapter. 
-                                Your membership application has been received and is pending approval.
-                            </p>
-                            <p style="background: #f0f8f0; padding: 1rem; border-radius: 10px; margin-bottom: 2rem;">
-                                <strong>Membership No:</strong> ${result.membershipNo || 'Pending'}<br>
-                                <small>Please save this number for future reference</small>
-                            </p>
-                            <button onclick="closeMembershipModal(); location.reload();" 
-                                style="padding: 1rem 2rem; background: #00A859; color: white; border: none; border-radius: 10px; font-size: 1rem; cursor: pointer;">
-                                <i class="fas fa-check"></i> Done
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    showNotification(result.message || 'Submission failed. Please try again.', 'error');
-                    submitBtn.innerHTML = originalText;
-                    submitBtn.disabled = false;
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification('Network error. Please try again later.', 'error');
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            }
+            }, 2000);
         });
     }
 });
@@ -1368,48 +1353,6 @@ document.addEventListener('DOMContentLoaded', function () {
             closePostModal();
             renderForumPosts();
             showNotification('Post published successfully!', 'success');
-        });
-    }
-
-    // Contact form handler
-    const contactForm = document.getElementById('contactForm');
-    if (contactForm) {
-        contactForm.addEventListener('submit', async function (e) {
-            e.preventDefault();
-
-            const formData = new FormData(this);
-            const data = {};
-            formData.forEach((value, key) => {
-                data[key] = value;
-            });
-
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-            submitBtn.disabled = true;
-
-            try {
-                const response = await fetch('api/submit-contact.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showNotification('Message sent successfully!', 'success');
-                    this.reset();
-                } else {
-                    showNotification(result.message || 'Failed to send message.', 'error');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification('Network error. Please try again.', 'error');
-            }
-
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
         });
     }
 });
