@@ -801,11 +801,17 @@ function adminLogin() {
 function updateAdminUI() {
     const adminBar = document.getElementById('forumAdminBar');
     const loginSection = document.querySelector('.admin-login-section');
+    const forumFeatures = document.getElementById('forumFeaturesSection');
 
     if (isAdminLoggedIn()) {
         adminBar.style.display = 'flex';
         adminBar.style.justifyContent = 'center';
         adminBar.style.marginBottom = '2rem';
+
+        // Show Forum Features for admin
+        if (forumFeatures) {
+            forumFeatures.style.display = 'block';
+        }
 
         // Add logout button
         adminBar.innerHTML = `
@@ -820,6 +826,11 @@ function updateAdminUI() {
     } else {
         adminBar.style.display = 'none';
         loginSection.style.display = 'block';
+
+        // Hide Forum Features for non-admin
+        if (forumFeatures) {
+            forumFeatures.style.display = 'none';
+        }
     }
 }
 
@@ -834,6 +845,17 @@ function adminLogout() {
 function openPostModal() {
     const modal = document.getElementById('postModal');
     if (modal) {
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Open post creation modal with pre-selected type
+function openPostModalWithType(type) {
+    const modal = document.getElementById('postModal');
+    const typeSelect = document.getElementById('postType');
+    if (modal && typeSelect) {
+        typeSelect.value = type;
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
     }
@@ -966,11 +988,15 @@ function deletePost(postId) {
 function getPostTypeInfo(type) {
     switch (type) {
         case 'announcement':
-            return { icon: '📢', label: 'Announcement', color: '#dc3545' };
+            return { icon: '📢', label: 'Announcement', color: '#004B87' };
         case 'article':
             return { icon: '📰', label: 'Article', color: '#00A859' };
         case 'message':
-            return { icon: '💬', label: 'Message', color: '#004B87' };
+            return { icon: '💬', label: 'Discussion', color: '#6f42c1' };
+        case 'presentation':
+            return { icon: '📊', label: 'Presentation', color: '#00A859' };
+        case 'resource':
+            return { icon: '📥', label: 'Resource', color: '#dc3545' };
         default:
             return { icon: '📝', label: 'Post', color: '#00A859' };
     }
@@ -1412,4 +1438,550 @@ document.addEventListener('DOMContentLoaded', function () {
             submitBtn.disabled = false;
         });
     }
+
+    // Initialize dynamic news
+    loadDynamicNews();
 });
+
+/* ========================================
+   Dynamic News System
+   ======================================== */
+
+// News data - Updated daily with Nigerian political news, jobs, and recruitment
+const politicalNewsData = [
+    {
+        category: 'breaking',
+        headline: 'Governor Peter Mbah Leads Historic Defection to APC',
+        summary: 'Governor Peter Mbah of Enugu State officially joined the All Progressives Congress with all 24 State House of Assembly members.',
+        source: 'APC National',
+        time: 'Today'
+    },
+    {
+        category: 'jobs',
+        headline: 'NNPC Recruitment 2025: Application Portal Now Open',
+        summary: 'The Nigerian National Petroleum Company has opened applications for graduate trainees and experienced professionals across all departments.',
+        source: 'NNPC Careers',
+        time: 'Today'
+    },
+    {
+        category: 'breaking',
+        headline: 'All Eight Enugu Reps Now in APC After Mass Defection',
+        summary: 'Five House of Representatives members from Enugu State joined the APC, bringing total Enugu lawmakers in the party to eight.',
+        source: 'Premium Times',
+        time: '2 hours ago'
+    },
+    {
+        category: 'recruitment',
+        headline: 'Federal Civil Service Commission Opens Mass Recruitment',
+        summary: 'FCSC announces recruitment of 10,000 graduates across ministries. Application deadline is January 31, 2026.',
+        source: 'FCSC Portal',
+        time: '3 hours ago'
+    },
+    {
+        category: 'politics',
+        headline: 'Senator Kelvin Chukwu Joins APC From Labour Party',
+        summary: 'Senator Kelvin Chukwu representing Enugu East Senatorial District officially defected to the APC.',
+        source: 'Channels TV',
+        time: '4 hours ago'
+    },
+    {
+        category: 'jobs',
+        headline: 'CBN Graduate Trainee Program 2026 - Apply Now',
+        summary: 'Central Bank of Nigeria seeks fresh graduates for its intensive 18-month management trainee program.',
+        source: 'CBN Careers',
+        time: '5 hours ago'
+    },
+    {
+        category: 'national',
+        headline: 'APC Dominance Grows: Multiple Governors Join Ruling Party',
+        summary: 'Following Enugu, governors from Rivers, Taraba, Bayelsa, Delta, and Akwa Ibom states have joined APC.',
+        source: 'Vanguard News',
+        time: '6 hours ago'
+    },
+    {
+        category: 'subscription',
+        headline: 'JAMB 2026: Registration Portal Opens Next Week',
+        summary: 'Joint Admissions and Matriculation Board announces e-registration for 2026 UTME begins December 20th.',
+        source: 'JAMB Official',
+        time: '6 hours ago'
+    },
+    {
+        category: 'events',
+        headline: 'GAT 2027 Enugu Chapter Launches Grassroot Campaign',
+        summary: 'The Grassroot Advocacy for Tinubu 2027 Enugu State Chapter launched its campaign across all 17 LGAs.',
+        source: 'APC GAT2027',
+        time: 'Yesterday'
+    },
+    {
+        category: 'recruitment',
+        headline: 'Nigerian Army Recruitment 2026: 85RRI Exercise Announced',
+        summary: 'Nigerian Army opens portal for 85 Regular Recruit Intake for trades and non-tradesmen/women.',
+        source: 'Nigerian Army',
+        time: 'Yesterday'
+    },
+    {
+        category: 'events',
+        headline: 'Massive Membership Registration Launched Across All LGAs',
+        summary: 'APC GAT 2027 Enugu State kicks off statewide membership registration campaign.',
+        source: 'APC GAT2027',
+        time: 'Yesterday'
+    },
+    {
+        category: 'jobs',
+        headline: 'NDLEA Recruitment: 5,000 Positions Available Nationwide',
+        summary: 'National Drug Law Enforcement Agency recruiting officers, apply via official portal before deadline.',
+        source: 'NDLEA Nigeria',
+        time: '1 day ago'
+    },
+    {
+        category: 'national',
+        headline: 'President Tinubu Announces New Economic Policies for 2026',
+        summary: 'The President outlined key economic reforms expected to boost Nigeria\'s GDP growth.',
+        source: 'NTA News',
+        time: '1 day ago'
+    },
+    {
+        category: 'subscription',
+        headline: 'NIN Registration: New Centers Open in Enugu State',
+        summary: 'NIMC opens 15 new enrollment centers across Enugu State for NIN registration.',
+        source: 'NIMC',
+        time: '1 day ago'
+    },
+    {
+        category: 'politics',
+        headline: 'APC National Convention Sets Date for 2026',
+        summary: 'The ruling party announces plans for its national convention to prepare for 2027 elections.',
+        source: 'ThisDay Live',
+        time: '1 day ago'
+    }
+];
+
+// Nigerian news from live sources - Politics, Jobs, Recruitment
+const liveNewsHeadlines = [
+    { headline: 'Immigration Service Opens Recruitment Portal for 2026', source: 'NIS Portal', time: '15 mins ago', category: 'recruitment' },
+    { headline: 'FG Announces New Infrastructure Projects for South-East Region', source: 'Punch News', time: '30 mins ago', category: 'national' },
+    { headline: 'NYSC Batch A 2026: Online Registration Begins', source: 'NYSC Official', time: '45 mins ago', category: 'subscription' },
+    { headline: 'Minister of Works Inspects Enugu-Onitsha Expressway', source: 'Vanguard', time: '1 hour ago', category: 'development' },
+    { headline: 'Police Force Recruitment: 30,000 Constables Needed', source: 'NPF Recruitment', time: '1.5 hours ago', category: 'jobs' },
+    { headline: 'CBN Releases New Guidelines on Foreign Exchange', source: 'BusinessDay', time: '2 hours ago', category: 'economy' },
+    { headline: 'FRSC Recruitment 2026: Marshal Inspectors Wanted', source: 'FRSC Nigeria', time: '2.5 hours ago', category: 'recruitment' },
+    { headline: 'INEC Begins Preparation for 2027 General Elections', source: 'Channels TV', time: '3 hours ago', category: 'politics' },
+    { headline: 'Scholarship Alert: PTDF Overseas Postgraduate Program', source: 'PTDF', time: '3.5 hours ago', category: 'subscription' },
+    { headline: 'Senate Passes New Bill for Electoral Reform', source: 'Premium Times', time: '4 hours ago', category: 'politics' },
+    { headline: 'DSS Recruitment Exercise: Apply for Field Agent Roles', source: 'DSS Nigeria', time: '4.5 hours ago', category: 'jobs' },
+    { headline: 'APC Welcomes New Members in South-East Expansion', source: 'The Nation', time: '5 hours ago', category: 'politics' },
+    { headline: 'WAEC Registration 2026: Deadline Approaches', source: 'WAEC Nigeria', time: '5.5 hours ago', category: 'subscription' },
+    { headline: 'Nigeria Signs New Trade Agreement with EU Partners', source: 'The Guardian', time: '6 hours ago', category: 'economy' },
+    { headline: 'Education Ministry Announces Scholarship Programs', source: 'Daily Trust', time: '7 hours ago', category: 'education' }
+];
+
+// Get category styling
+function getCategoryStyle(category) {
+    const styles = {
+        'breaking': { bg: '#dc3545', label: '🔴 BREAKING' },
+        'politics': { bg: '#004B87', label: '🏛️ Politics' },
+        'national': { bg: '#6f42c1', label: '🇳🇬 National' },
+        'events': { bg: '#00A859', label: '📅 Events' },
+        'economy': { bg: '#fd7e14', label: '💰 Economy' },
+        'development': { bg: '#20c997', label: '🏗️ Development' },
+        'education': { bg: '#17a2b8', label: '📚 Education' },
+        'jobs': { bg: '#e83e8c', label: '💼 Jobs' },
+        'recruitment': { bg: '#28a745', label: '📋 Recruitment' },
+        'subscription': { bg: '#6610f2', label: '✍️ Registration' }
+    };
+    return styles[category] || { bg: '#00A859', label: '📰 News' };
+}
+
+// Load dynamic news on page load
+async function loadDynamicNews() {
+    // Show loading state
+    const container = document.getElementById('dynamicNewsContainer');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 3rem;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #00A859;"></i>
+                <p style="color: #666; margin-top: 1rem;">Loading latest news...</p>
+            </div>
+        `;
+    }
+
+    // Try to fetch live news from RSS feeds
+    try {
+        await fetchLiveRSSNews();
+    } catch (error) {
+        console.log('Using cached news data:', error);
+    }
+
+    // Render the news
+    renderMainNews();
+    renderLiveNews();
+    renderNewsTicker();
+}
+
+// RSS Feed sources for Nigerian news
+const RSS_FEEDS = [
+    { url: 'https://punchng.com/feed/', source: 'Punch News', category: 'politics' },
+    { url: 'https://www.vanguardngr.com/feed/', source: 'Vanguard', category: 'national' },
+    { url: 'https://www.premiumtimesng.com/feed', source: 'Premium Times', category: 'breaking' },
+    { url: 'https://dailypost.ng/feed/', source: 'Daily Post', category: 'politics' },
+    { url: 'https://www.thecable.ng/feed', source: 'The Cable', category: 'economy' }
+];
+
+// Fetch live news from RSS feeds
+async function fetchLiveRSSNews() {
+    const RSS2JSON_API = 'https://api.rss2json.com/v1/api.json?rss_url=';
+    const fetchedNews = [];
+    const fetchedLiveNews = [];
+
+    // Fetch from multiple sources
+    const fetchPromises = RSS_FEEDS.slice(0, 3).map(async (feed) => {
+        try {
+            const response = await fetch(RSS2JSON_API + encodeURIComponent(feed.url), {
+                mode: 'cors'
+            });
+            const data = await response.json();
+
+            if (data.status === 'ok' && data.items) {
+                data.items.slice(0, 5).forEach((item, index) => {
+                    const newsItem = {
+                        category: categorizeNews(item.title),
+                        headline: cleanTitle(item.title),
+                        summary: cleanSummary(item.description),
+                        source: feed.source,
+                        time: getRelativeTime(item.pubDate),
+                        link: item.link
+                    };
+
+                    if (index < 2) {
+                        fetchedNews.push(newsItem);
+                    } else {
+                        fetchedLiveNews.push({
+                            headline: newsItem.headline,
+                            source: newsItem.source,
+                            time: newsItem.time,
+                            category: newsItem.category,
+                            link: newsItem.link
+                        });
+                    }
+                });
+            }
+        } catch (err) {
+            console.log(`Failed to fetch from ${feed.source}:`, err);
+        }
+    });
+
+    await Promise.allSettled(fetchPromises);
+
+    // Update news arrays if we got new data
+    if (fetchedNews.length > 0) {
+        // Merge fetched news with existing data
+        politicalNewsData.unshift(...fetchedNews.slice(0, 4));
+        // Keep array manageable
+        if (politicalNewsData.length > 20) {
+            politicalNewsData.splice(20);
+        }
+    }
+
+    if (fetchedLiveNews.length > 0) {
+        liveNewsHeadlines.unshift(...fetchedLiveNews.slice(0, 5));
+        if (liveNewsHeadlines.length > 15) {
+            liveNewsHeadlines.splice(15);
+        }
+    }
+}
+
+// Categorize news based on keywords
+function categorizeNews(title) {
+    const lower = title.toLowerCase();
+    if (lower.includes('breaking') || lower.includes('just in')) return 'breaking';
+    if (lower.includes('recruit') || lower.includes('hiring') || lower.includes('vacancy')) return 'recruitment';
+    if (lower.includes('job') || lower.includes('career') || lower.includes('employment')) return 'jobs';
+    if (lower.includes('registration') || lower.includes('apply') || lower.includes('portal')) return 'subscription';
+    if (lower.includes('apc') || lower.includes('pdp') || lower.includes('election') || lower.includes('governor') || lower.includes('senate') || lower.includes('tinubu')) return 'politics';
+    if (lower.includes('economy') || lower.includes('naira') || lower.includes('cbn') || lower.includes('inflation')) return 'economy';
+    if (lower.includes('education') || lower.includes('university') || lower.includes('school')) return 'education';
+    return 'national';
+}
+
+// Clean HTML from title
+function cleanTitle(title) {
+    return title.replace(/<[^>]*>/g, '').trim().substring(0, 120);
+}
+
+// Clean and truncate summary
+function cleanSummary(html) {
+    const text = html.replace(/<[^>]*>/g, '').trim();
+    return text.substring(0, 200) + (text.length > 200 ? '...' : '');
+}
+
+// Get relative time from date
+function getRelativeTime(dateStr) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins} mins ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
+}
+
+// Render main news section - Enhanced with highlighted captions (no images)
+function renderMainNews() {
+    const container = document.getElementById('dynamicNewsContainer');
+    if (!container) return;
+
+    let html = '<div class="news-headlines-container">';
+
+    politicalNewsData.forEach((news, index) => {
+        const style = getCategoryStyle(news.category);
+        const isFeatured = index === 0;
+
+        html += `
+            <div class="news-headline-card ${isFeatured ? 'featured-news' : ''}" onclick="openNewsModal(${index}, 'main')">
+                <div class="news-category-badge" style="background: ${style.bg};">
+                    ${style.label}
+                </div>
+                <h4 class="news-headline-text ${isFeatured ? 'featured-headline' : ''}">${news.headline}</h4>
+                <p class="news-summary-text">${news.summary}</p>
+                <div class="news-meta-info">
+                    <span class="news-time"><i class="far fa-clock"></i> ${news.time}</span>
+                    <span class="news-source"><i class="far fa-newspaper"></i> ${news.source}</span>
+                    ${news.link ? '<span class="news-link-indicator"><i class="fas fa-external-link-alt"></i></span>' : ''}
+                </div>
+                <div class="news-read-more">
+                    <span>Read more <i class="fas fa-chevron-right"></i></span>
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Render live news headlines - Enhanced with highlighted captions (no images)
+function renderLiveNews() {
+    const container = document.getElementById('liveNewsContainer');
+    if (!container) return;
+
+    let html = '';
+
+    liveNewsHeadlines.forEach((news, index) => {
+        const style = getCategoryStyle(news.category);
+
+        html += `
+            <div class="live-news-card" onclick="openNewsModal(${index}, 'live')">
+                <div class="live-news-badge" style="background: ${style.bg};">${style.label}</div>
+                <div class="live-news-content">
+                    <h5 class="live-news-headline">${news.headline}</h5>
+                    <div class="live-news-meta">
+                        <span class="live-news-source">${news.source}</span>
+                        <span class="live-news-time">${news.time}</span>
+                        ${news.link ? '<span class="live-news-link"><i class="fas fa-external-link-alt"></i></span>' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Render news ticker
+function renderNewsTicker() {
+    const ticker = document.getElementById('tickerContent');
+    if (!ticker) return;
+
+    let html = '';
+    politicalNewsData.slice(0, 5).forEach((news, index) => {
+        html += `<span ${index > 0 ? 'style="margin-left: 3rem;"' : ''}>📢 ${news.headline}</span>`;
+    });
+
+    ticker.innerHTML = html;
+}
+
+// Load more / refresh news from live RSS feeds
+async function loadMoreNews() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching live news...';
+    btn.disabled = true;
+
+    try {
+        // Fetch fresh news from RSS feeds
+        await fetchLiveRSSNews();
+        renderMainNews();
+        renderLiveNews();
+        renderNewsTicker();
+        showNotification('News updated with latest headlines!', 'success');
+    } catch (error) {
+        console.log('Refresh error:', error);
+        // Shuffle existing news as fallback
+        liveNewsHeadlines.sort(() => Math.random() - 0.5);
+        renderLiveNews();
+        showNotification('Showing cached news', 'success');
+    }
+
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+}
+
+// Add pulse animation for live feed badge
+if (!document.querySelector('#news-pulse-styles')) {
+    const style = document.createElement('style');
+    style.id = 'news-pulse-styles';
+    style.textContent = `
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .news-headline-card:hover h4 {
+            color: #00A859 !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Open news modal with full details
+function openNewsModal(index, type) {
+    const news = type === 'main' ? politicalNewsData[index] : liveNewsHeadlines[index];
+    if (!news) return;
+
+    const style = getCategoryStyle(news.category);
+
+    // Create modal HTML
+    const modalHTML = `
+        <div id="newsDetailModal" onclick="closeNewsModal(event)" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            animation: fadeIn 0.3s ease;
+        ">
+            <div onclick="event.stopPropagation()" style="
+                background: white;
+                max-width: 700px;
+                width: 100%;
+                max-height: 90vh;
+                overflow-y: auto;
+                border-radius: 20px;
+                position: relative;
+                animation: slideUp 0.3s ease;
+            ">
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, ${style.bg}, ${style.bg}dd); padding: 2rem; border-radius: 20px 20px 0 0;">
+                    <button onclick="closeNewsModal(event)" style="
+                        position: absolute;
+                        top: 1rem;
+                        right: 1rem;
+                        background: rgba(255,255,255,0.2);
+                        border: none;
+                        color: white;
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        font-size: 1.5rem;
+                    ">&times;</button>
+                    <span style="background: white; color: ${style.bg}; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">
+                        ${style.label}
+                    </span>
+                    <h2 style="color: white; margin: 1.5rem 0 0.5rem; font-size: 1.5rem; line-height: 1.4;">
+                        ${news.headline}
+                    </h2>
+                    <div style="color: rgba(255,255,255,0.9); font-size: 0.9rem;">
+                        <span><i class="far fa-newspaper"></i> ${news.source}</span>
+                        <span style="margin-left: 1.5rem;"><i class="far fa-clock"></i> ${news.time}</span>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 2rem;">
+                    <p style="color: #333; font-size: 1.1rem; line-height: 1.8; margin: 0 0 1.5rem;">
+                        ${news.summary || 'Click the button below to read the full story on the source website.'}
+                    </p>
+                    
+                    ${news.link ? `
+                        <div style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); padding: 1.5rem; border-radius: 15px; text-align: center;">
+                            <p style="color: #666; margin: 0 0 1rem;"><i class="fas fa-external-link-alt"></i> This news has an external source link</p>
+                            <a href="${news.link}" target="_blank" rel="noopener noreferrer" style="
+                                display: inline-block;
+                                background: linear-gradient(135deg, #00A859, #1a5f3c);
+                                color: white;
+                                padding: 1rem 2rem;
+                                border-radius: 30px;
+                                text-decoration: none;
+                                font-weight: 600;
+                                font-size: 1rem;
+                            ">
+                                <i class="fas fa-arrow-right"></i> Read Full Story on ${news.source}
+                            </a>
+                        </div>
+                    ` : `
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 15px; text-align: center;">
+                            <p style="color: #666; margin: 0;"><i class="fas fa-info-circle"></i> No external link available for this news item</p>
+                        </div>
+                    `}
+                    
+                    <!-- Share Buttons -->
+                    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #eee;">
+                        <p style="color: #888; margin: 0 0 1rem; font-size: 0.9rem;"><i class="fas fa-share-alt"></i> Share this news:</p>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(news.headline)}${news.link ? '&url=' + encodeURIComponent(news.link) : ''}" target="_blank" 
+                                style="background: #1DA1F2; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem;">
+                                <i class="fab fa-twitter"></i> Twitter
+                            </a>
+                            <a href="https://wa.me/?text=${encodeURIComponent(news.headline + (news.link ? ' ' + news.link : ''))}" target="_blank" 
+                                style="background: #25D366; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem;">
+                                <i class="fab fa-whatsapp"></i> WhatsApp
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.style.overflow = 'hidden';
+}
+
+// Close news modal
+function closeNewsModal(event) {
+    if (event) event.stopPropagation();
+    const modal = document.getElementById('newsDetailModal');
+    if (modal) {
+        modal.remove();
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// Add modal animation styles
+if (!document.querySelector('#news-modal-styles')) {
+    const modalStyle = document.createElement('style');
+    modalStyle.id = 'news-modal-styles';
+    modalStyle.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(modalStyle);
+}
