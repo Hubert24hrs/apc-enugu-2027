@@ -48,5 +48,27 @@ CREATE TABLE IF NOT EXISTS `admins` (
 -- 2. Edit the admin row
 -- 3. Generate new hash with: SELECT PASSWORD_HASH('YourNewPassword');
 --    Or use PHP: echo password_hash('YourNewPassword', PASSWORD_DEFAULT);
-INSERT INTO `admins` (`username`, `password`, `full_name`) VALUES 
 ('admin', '$2y$10$RkLWCDvYfNv8GsHqgFVbQOD1Oz8vJvVdFXlxFOQnJh5GBL8Jq3Fya', 'Administrator');
+
+-- Forum Posts Table
+CREATE TABLE IF NOT EXISTS `forum_posts` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `type` VARCHAR(50) NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `content` TEXT NOT NULL,
+    `image` LONGTEXT DEFAULT NULL,
+    `author` VARCHAR(100) NOT NULL,
+    `author_role` VARCHAR(100) NOT NULL,
+    `likes` INT DEFAULT 0,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Forum Comments Table
+CREATE TABLE IF NOT EXISTS `forum_comments` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `post_id` INT NOT NULL,
+    `name` VARCHAR(100) NOT NULL,
+    `comment` TEXT NOT NULL,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`post_id`) REFERENCES `forum_posts`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

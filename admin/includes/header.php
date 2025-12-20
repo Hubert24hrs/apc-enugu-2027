@@ -148,6 +148,9 @@
         <a href="contacts.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'contacts.php' ? 'active' : ''; ?>">
             <i class="fas fa-envelope"></i> Messages
         </a>
+        <a href="forum.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'forum.php' ? 'active' : ''; ?>">
+            <i class="fas fa-comments"></i> Forum
+        </a>
         <a href="logout.php" class="logout">
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>

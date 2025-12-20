@@ -223,24 +223,7 @@
             </div>
 
             <!-- Login Prompt for Admin -->
-            <div class="admin-login-section" style="text-align: center; margin-bottom: 2rem;">
-                <button class="btn btn-outline" onclick="toggleAdminLogin()" id="adminToggleBtn">
-                    <i class="fas fa-lock"></i> Admin Login
-                </button>
-                <div id="adminLoginForm"
-                    style="display: none; margin-top: 1rem; max-width: 400px; margin-left: auto; margin-right: auto;">
-                    <div
-                        style="background: #f8f9fa; padding: 1.5rem; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
-                        <h4 style="color: #00A859; margin-bottom: 1rem;"><i class="fas fa-user-shield"></i> Publicity
-                            Secretary Login</h4>
-                        <input type="password" id="adminPassword" placeholder="Enter admin password"
-                            style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 1rem; font-size: 1rem;">
-                        <button class="btn btn-primary" onclick="adminLogin()" style="width: 100%;">
-                            <i class="fas fa-sign-in-alt"></i> Login
-                        </button>
-                    </div>
-                </div>
-            </div>
+
 
             <!-- Forum Posts Container -->
             <div class="forum-posts" id="forumPosts">
@@ -258,8 +241,79 @@
                 </div>
             </div>
 
+            <!-- Forum Features (Admin Only) -->
+            <div class="forum-features" id="forumFeaturesSection"
+                style="display: none; margin-top: 3rem; padding: 2rem; background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 20px;">
+                <h4 style="color: #1a5f3c; margin-bottom: 1.5rem; text-align: center;"><i class="fas fa-tools"></i>
+                    Admin Panel - Select Post Type</h4>
+                <p style="text-align: center; color: #666; margin-bottom: 1.5rem;">Click on a category below to create a
+                    new post of that type</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                    <!-- Presentation Feature -->
+                    <div class="feature-card" onclick="openPostModalWithType('presentation')"
+                        style="cursor: pointer; background: white; padding: 1.5rem; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); border-left: 4px solid #00A859; transition: transform 0.3s ease, box-shadow 0.3s ease;"
+                        onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.15)';"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.08)';">
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <div
+                                style="width: 50px; height: 50px; background: linear-gradient(135deg, #00A859, #1a5f3c); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-desktop" style="color: white; font-size: 1.3rem;"></i>
+                            </div>
+                            <h5 style="color: #1a5f3c; margin: 0;">📊 Presentations</h5>
+                        </div>
+                        <p style="color: #666; font-size: 0.95rem; margin-bottom: 0;">Share campaign slides, policy
+                            highlights, event recaps & infographics</p>
+                    </div>
+                    <!-- Announcements Feature -->
+                    <div class="feature-card" onclick="openPostModalWithType('announcement')"
+                        style="cursor: pointer; background: white; padding: 1.5rem; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); border-left: 4px solid #004B87; transition: transform 0.3s ease, box-shadow 0.3s ease;"
+                        onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.15)';"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.08)';">
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <div
+                                style="width: 50px; height: 50px; background: linear-gradient(135deg, #004B87, #002244); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-bullhorn" style="color: white; font-size: 1.3rem;"></i>
+                            </div>
+                            <h5 style="color: #004B87; margin: 0;">📢 Announcements</h5>
+                        </div>
+                        <p style="color: #666; font-size: 0.95rem; margin-bottom: 0;">Official statements, event
+                            schedules, meeting updates & leadership messages</p>
+                    </div>
+                    <!-- Discussions Feature -->
+                    <div class="feature-card" onclick="openPostModalWithType('message')"
+                        style="cursor: pointer; background: white; padding: 1.5rem; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); border-left: 4px solid #6f42c1; transition: transform 0.3s ease, box-shadow 0.3s ease;"
+                        onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.15)';"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.08)';">
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <div
+                                style="width: 50px; height: 50px; background: linear-gradient(135deg, #6f42c1, #4a2c7c); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-comments" style="color: white; font-size: 1.3rem;"></i>
+                            </div>
+                            <h5 style="color: #6f42c1; margin: 0;">💬 Discussions</h5>
+                        </div>
+                        <p style="color: #666; font-size: 0.95rem; margin-bottom: 0;">Community topics, policy
+                            discussions, feedback threads & Q&A sessions</p>
+                    </div>
+                    <!-- Resources Feature -->
+                    <div class="feature-card" onclick="openPostModalWithType('resource')"
+                        style="cursor: pointer; background: white; padding: 1.5rem; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); border-left: 4px solid #dc3545; transition: transform 0.3s ease, box-shadow 0.3s ease;"
+                        onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.15)';"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 20px rgba(0,0,0,0.08)';">
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <div
+                                style="width: 50px; height: 50px; background: linear-gradient(135deg, #dc3545, #a82335); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-file-download" style="color: white; font-size: 1.3rem;"></i>
+                            </div>
+                            <h5 style="color: #dc3545; margin: 0;">📥 Resources</h5>
+                        </div>
+                        <p style="color: #666; font-size: 0.95rem; margin-bottom: 0;">Campaign materials, branding
+                            assets, training documents & event flyers</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Other Forums Link -->
-            <div class="other-forums" style="margin-top: 3rem; text-align: center;">
+            <div class="other-forums" style="margin-top: 2rem; text-align: center;">
                 <h4 style="color: #1a5f3c; margin-bottom: 1.5rem;">Join Our Community Forum</h4>
                 <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
                     <a href="https://wa.me/2349045123751" target="_blank" class="btn btn-whatsapp"
@@ -291,9 +345,11 @@
                         Type</label>
                     <select id="postType" required
                         style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; font-size: 1rem;">
+                        <option value="presentation">📊 Presentation</option>
                         <option value="announcement">📢 Announcement</option>
+                        <option value="message">💬 Discussion</option>
+                        <option value="resource">📥 Resource</option>
                         <option value="article">📰 Article</option>
-                        <option value="message">💬 Message</option>
                     </select>
                 </div>
                 <div style="margin-bottom: 1.5rem;">
@@ -347,155 +403,68 @@
 
             <!-- News Filter Tabs -->
             <div class="news-tabs"
-                style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                style="display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap;">
                 <button class="news-tab active" data-filter="all"
-                    style="padding: 0.75rem 1.5rem; border: 2px solid #00A859; background: #00A859; color: white; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">All
+                    style="padding: 0.6rem 1.2rem; border: 2px solid #00A859; background: #00A859; color: white; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; font-size: 0.9rem;">All
                     News</button>
                 <button class="news-tab" data-filter="breaking"
-                    style="padding: 0.75rem 1.5rem; border: 2px solid #00A859; background: transparent; color: #00A859; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">Breaking</button>
-                <button class="news-tab" data-filter="press"
-                    style="padding: 0.75rem 1.5rem; border: 2px solid #00A859; background: transparent; color: #00A859; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">Press
-                    Releases</button>
-                <button class="news-tab" data-filter="events"
-                    style="padding: 0.75rem 1.5rem; border: 2px solid #00A859; background: transparent; color: #00A859; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">Events</button>
+                    style="padding: 0.6rem 1.2rem; border: 2px solid #dc3545; background: transparent; color: #dc3545; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; font-size: 0.9rem;">🔴
+                    Breaking</button>
+                <button class="news-tab" data-filter="politics"
+                    style="padding: 0.6rem 1.2rem; border: 2px solid #004B87; background: transparent; color: #004B87; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; font-size: 0.9rem;">🏛️
+                    Politics</button>
+                <button class="news-tab" data-filter="jobs"
+                    style="padding: 0.6rem 1.2rem; border: 2px solid #e83e8c; background: transparent; color: #e83e8c; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; font-size: 0.9rem;">💼
+                    Jobs</button>
+                <button class="news-tab" data-filter="recruitment"
+                    style="padding: 0.6rem 1.2rem; border: 2px solid #28a745; background: transparent; color: #28a745; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; font-size: 0.9rem;">📋
+                    Recruitment</button>
+                <button class="news-tab" data-filter="subscription"
+                    style="padding: 0.6rem 1.2rem; border: 2px solid #6610f2; background: transparent; color: #6610f2; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; font-size: 0.9rem;">✍️
+                    Registration</button>
             </div>
 
-            <div class="news-grid" id="newsGrid">
-                <!-- Featured News - Governor Mbah Defection -->
-                <div class="news-card featured" data-category="breaking">
-                    <div class="news-image">
-                        <img src="assets/governor.jpg" alt="Governor Peter Mbah joins APC">
-                        <span class="news-category" style="background: #dc3545;">Breaking News</span>
-                    </div>
-                    <div class="news-content">
-                        <div class="news-meta">
-                            <span><i class="far fa-calendar"></i> October 2025</span>
-                            <span><i class="far fa-user"></i> APC National</span>
-                        </div>
-                        <h3>Governor Peter Mbah Leads Historic Defection to APC</h3>
-                        <p>In a landmark political move, Governor Peter Mbah of Enugu State officially joined the All
-                            Progressives Congress, bringing with him all 24 State House of Assembly members, creating
-                            unprecedented unity in Enugu politics.</p>
-                        <a href="#" class="read-more">Read More <i class="fas fa-arrow-right"></i></a>
-                    </div>
-                </div>
-
-                <!-- House of Reps Defection -->
-                <div class="news-card" data-category="breaking">
-                    <div class="news-image">
-                        <img src="assets/news-house-reps.png" alt="House of Reps members defect">
-                        <span class="news-category" style="background: #dc3545;">Breaking</span>
-                    </div>
-                    <div class="news-content">
-                        <div class="news-meta">
-                            <span><i class="far fa-calendar"></i> October 30, 2025</span>
-                        </div>
-                        <h3>All Eight Enugu Reps Now in APC After Mass Defection</h3>
-                        <p>Five House of Representatives members from Enugu State joined the APC, bringing total Enugu
-                            lawmakers in the party to eight, pledging support for Governor Mbah's vision.</p>
-                        <a href="#" class="read-more">Read More <i class="fas fa-arrow-right"></i></a>
-                    </div>
-                </div>
-
-                <!-- Senator Kelvin Chukwu -->
-                <div class="news-card" data-category="press">
-                    <div class="news-image">
-                        <img src="assets/news-senator.png" alt="Senator Kelvin Chukwu">
-                        <span class="news-category">Press Release</span>
-                    </div>
-                    <div class="news-content">
-                        <div class="news-meta">
-                            <span><i class="far fa-calendar"></i> October 2025</span>
-                        </div>
-                        <h3>Senator Kelvin Chukwu Joins APC From Labour Party</h3>
-                        <p>Senator Kelvin Chukwu representing Enugu East Senatorial District officially defected to the
-                            APC, citing the need for unity and effective governance.</p>
-                        <a href="#" class="read-more">Read More <i class="fas fa-arrow-right"></i></a>
-                    </div>
-                </div>
-
-                <!-- GAT 2027 Launch -->
-                <div class="news-card" data-category="events">
-                    <div class="news-image">
-                        <img src="assets/logo.jpg" alt="GAT 2027 Launch">
-                        <span class="news-category" style="background: #6f42c1;">Event</span>
-                    </div>
-                    <div class="news-content">
-                        <div class="news-meta">
-                            <span><i class="far fa-calendar"></i> December 2025</span>
-                        </div>
-                        <h3>GAT 2027 Enugu Chapter Launches Grassroot Campaign</h3>
-                        <p>The Grassroot Advocacy for Tinubu 2027 Enugu State Chapter officially launched its campaign
-                            to mobilize support across all 17 LGAs for President Tinubu's re-election.</p>
-                        <a href="#" class="read-more">Read More <i class="fas fa-arrow-right"></i></a>
-                    </div>
-                </div>
-
-                <!-- National Wave -->
-                <div class="news-card" data-category="breaking">
-                    <div class="news-image">
-                        <img src="assets/news-national-wave.png" alt="National Defection Wave">
-                        <span class="news-category" style="background: #dc3545;">Breaking</span>
-                    </div>
-                    <div class="news-content">
-                        <div class="news-meta">
-                            <span><i class="far fa-calendar"></i> December 2025</span>
-                        </div>
-                        <h3>APC Dominance Grows: Multiple Governors Join Ruling Party</h3>
-                        <p>Following Enugu, governors from Rivers, Taraba, Bayelsa, Delta, and Akwa Ibom states have
-                            joined APC, signaling a historic political realignment.</p>
-                        <a href="#" class="read-more">Read More <i class="fas fa-arrow-right"></i></a>
-                    </div>
-                </div>
-
-                <!-- Membership Drive -->
-                <div class="news-card" data-category="events">
-                    <div class="news-image">
-                        <img src="assets/news-membership.png" alt="Membership Registration">
-                        <span class="news-category" style="background: #6f42c1;">Event</span>
-                    </div>
-                    <div class="news-content">
-                        <div class="news-meta">
-                            <span><i class="far fa-calendar"></i> December 2025</span>
-                        </div>
-                        <h3>Massive Membership Registration Launched Across All LGAs</h3>
-                        <p>APC GAT 2027 Enugu State kicks off statewide membership registration campaign targeting all
-                            17 Local Government Areas.</p>
-                        <a href="#" class="read-more">Read More <i class="fas fa-arrow-right"></i></a>
-                    </div>
+            <!-- Dynamic News Headlines Container -->
+            <div id="dynamicNewsContainer">
+                <!-- Loading indicator -->
+                <div id="newsLoading" style="text-align: center; padding: 3rem;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #00A859;"></i>
+                    <p style="color: #666; margin-top: 1rem;">Loading latest news...</p>
                 </div>
             </div>
 
             <!-- News Ticker / Breaking News Bar -->
-            <div class="news-ticker"
+            <div class="news-ticker" id="newsTicker"
                 style="background: linear-gradient(90deg, #00A859, #1a5f3c); padding: 1rem; border-radius: 10px; margin-top: 2rem; overflow: hidden;">
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <span
                         style="background: #dc3545; color: white; padding: 0.5rem 1rem; border-radius: 5px; font-weight: bold; white-space: nowrap;">🔴
                         LIVE</span>
-                    <div class="ticker-content"
-                        style="color: white; animation: ticker 20s linear infinite; white-space: nowrap;">
-                        <span>📢 Governor Peter Mbah joins APC with entire State Assembly</span>
-                        <span style="margin-left: 3rem;">📢 All 8 Enugu House of Reps members now in APC</span>
-                        <span style="margin-left: 3rem;">📢 GAT 2027 membership registration ongoing in all LGAs</span>
-                        <span style="margin-left: 3rem;">📢 Senator Kelvin Chukwu defects to APC</span>
+                    <div class="ticker-content" id="tickerContent"
+                        style="color: white; animation: ticker 30s linear infinite; white-space: nowrap;">
+                        <!-- Ticker will be populated dynamically -->
                     </div>
                 </div>
             </div>
 
-            <div class="text-center" style="margin-top: 2rem;">
-                <a href="#news" class="btn btn-primary">View All News</a>
-            </div>
-
-            <!-- Live News from RSS Feeds -->
+            <!-- Live Nigerian News Section -->
             <div style="margin-top: 4rem; padding-top: 3rem; border-top: 2px solid #e9ecef;">
                 <div class="section-header" style="margin-bottom: 2rem;">
-                    <span class="section-tag" style="background: #dc3545;">🔴 Live Feed</span>
-                    <h3 style="font-size: 1.8rem;">Latest Nigerian Political News</h3>
-                    <p>Auto-updated from Nigerian news sources</p>
+                    <span class="section-tag"
+                        style="background: linear-gradient(135deg, #dc3545, #a82335); animation: pulse 2s infinite;">🔴
+                        Live Feed</span>
+                    <h3
+                        style="font-size: 2rem; background: linear-gradient(135deg, #00A859, #004B87); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 800;">
+                        Latest Nigeria News</h3>
+                    <p style="color: #666;">Auto-updated daily from Nigerian news sources</p>
                 </div>
-                <div class="news-grid" id="liveNewsContainer">
-                    <!-- Live news will be loaded here via JavaScript -->
+                <div id="liveNewsContainer" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- Live news headlines will be loaded here -->
+                </div>
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button onclick="loadMoreNews()" class="btn btn-outline" style="padding: 0.75rem 2rem;">
+                        <i class="fas fa-sync-alt"></i> Refresh News
+                    </button>
                 </div>
             </div>
         </div>
@@ -683,29 +652,11 @@
                 <div class="contact-info">
                     <div class="info-card">
                         <div class="info-icon">
-                            <i class="fas fa-map-marker-alt"></i>
-                        </div>
-                        <div class="info-content">
-                            <h4>State Secretariat</h4>
-                            <p>APC State Secretariat<br>Independence Layout, Enugu<br>Enugu State, Nigeria</p>
-                        </div>
-                    </div>
-                    <div class="info-card">
-                        <div class="info-icon">
                             <i class="fas fa-envelope"></i>
                         </div>
                         <div class="info-content">
                             <h4>Email Us</h4>
                             <p>Membership@apcgat2027enugu.com.ng</p>
-                        </div>
-                    </div>
-                    <div class="info-card">
-                        <div class="info-icon">
-                            <i class="fas fa-phone"></i>
-                        </div>
-                        <div class="info-content">
-                            <h4>Call Us</h4>
-                            <p>+234 708 990 7082</p>
                         </div>
                     </div>
 

@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initFormValidation();
     initScrollAnimations();
     initNewsFilter();
+    checkAdminAccess();
 });
 
 /* Navbar Scroll Effect */
@@ -761,7 +762,7 @@ document.addEventListener('click', function (e) {
    ======================================== */
 
 // Forum Admin Password (In production, this should be server-side)
-const ADMIN_PASSWORD = 'Nelson2306';
+const ADMIN_PASSWORD = 'Idokonelson2306';
 
 // Check if admin is logged in
 function isAdminLoggedIn() {
@@ -797,6 +798,20 @@ function adminLogin() {
     }
 }
 
+// Check for admin access via URL parameter or existing session
+function checkAdminAccess() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdminParam = urlParams.get('admin') === 'true';
+    const loginSection = document.getElementById('adminLoginSection');
+
+    // If admin query param is present, show the login button
+    if (isAdminParam || isAdminLoggedIn()) {
+        if (loginSection) {
+            loginSection.style.display = 'block';
+        }
+    }
+}
+
 // Update UI based on admin status
 function updateAdminUI() {
     const adminBar = document.getElementById('forumAdminBar');
@@ -825,7 +840,14 @@ function updateAdminUI() {
         loginSection.style.display = 'none';
     } else {
         adminBar.style.display = 'none';
-        loginSection.style.display = 'block';
+
+        // Only show login section if admin param is present
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === 'true') {
+            loginSection.style.display = 'block';
+        } else {
+            loginSection.style.display = 'none';
+        }
 
         // Hide Forum Features for non-admin
         if (forumFeatures) {
@@ -880,39 +902,41 @@ document.addEventListener('click', function (e) {
     }
 });
 
-// Get posts from localStorage
-function getForumPosts() {
-    const posts = localStorage.getItem('forumPosts');
-    return posts ? JSON.parse(posts) : [];
+// Get posts from API
+async function getForumPosts() {
+    try {
+        const response = await fetch('api/forum_posts.php');
+        const result = await response.json();
+        return result.success ? result.posts : [];
+    } catch (error) {
+        console.error('Error fetching posts:', error);
+        return [];
+    }
 }
 
-// Save posts to localStorage
-function saveForumPosts(posts) {
-    localStorage.setItem('forumPosts', JSON.stringify(posts));
-}
-
-// Create a new post
-function createPost(type, title, content, imageData = null) {
-    const posts = getForumPosts();
-    const newPost = {
-        id: Date.now(),
-        type: type,
-        title: title,
-        content: content,
-        image: imageData, // Store base64 image data
+// Create a new post via API
+async function createPost(type, title, content, imageData = null) {
+    const postData = {
+        type,
+        title,
+        content,
+        image: imageData,
         author: 'Nelson Ndudi Idoko',
-        authorRole: 'Publicity Secretary, Enugu State',
-        date: new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        }),
-        likes: 0
+        authorRole: 'Publicity Secretary, Enugu State'
     };
 
-    posts.unshift(newPost); // Add to beginning
-    saveForumPosts(posts);
-    return newPost;
+    try {
+        const response = await fetch('api/forum_posts.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(postData)
+        });
+        const result = await response.json();
+        return result.success ? result.post : null;
+    } catch (error) {
+        console.error('Error creating post:', error);
+        return null;
+    }
 }
 
 // Store the current post image data
@@ -971,16 +995,25 @@ function likePost(postId) {
     }
 }
 
-// Delete a post (admin only)
-function deletePost(postId) {
+// Delete a post via API
+async function deletePost(postId) {
     if (!isAdminLoggedIn()) return;
 
     if (confirm('Are you sure you want to delete this post?')) {
-        let posts = getForumPosts();
-        posts = posts.filter(p => p.id !== postId);
-        saveForumPosts(posts);
-        renderForumPosts();
-        showNotification('Post deleted successfully.', 'success');
+        try {
+            const response = await fetch(`api/forum_posts.php?id=${postId}`, { method: 'DELETE' });
+            const result = await response.json();
+
+            if (result.success) {
+                renderForumPosts();
+                showNotification('Post deleted successfully.', 'success');
+            } else {
+                showNotification('Failed to delete post.', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            showNotification('Network error.', 'error');
+        }
     }
 }
 
@@ -1003,10 +1036,10 @@ function getPostTypeInfo(type) {
 }
 
 // Render forum posts
-function renderForumPosts() {
+async function asyncRenderForumPosts() {
     const container = document.getElementById('forumPosts');
     const emptyForum = document.getElementById('emptyForum');
-    const posts = getForumPosts();
+    const posts = await getForumPosts();
 
     if (posts.length === 0) {
         emptyForum.style.display = 'block';
@@ -1017,14 +1050,15 @@ function renderForumPosts() {
 
     let html = '<div class="posts-grid" style="display: grid; gap: 2rem;">';
 
-    posts.forEach(post => {
+    // Use Promise.all to handle async map
+    const postsHtml = await Promise.all(posts.map(async post => {
         const typeInfo = getPostTypeInfo(post.type);
         const isAdmin = isAdminLoggedIn();
-        const comments = getPostComments(post.id);
+        const comments = await getPostComments(post.id);
         const shareUrl = encodeURIComponent(window.location.href + '#post-' + post.id);
         const shareText = encodeURIComponent(post.title + ' - APC GAT2027 Enugu Forum');
 
-        html += `
+        return `
             <div class="forum-post-card" data-post-id="${post.id}" id="post-${post.id}" style="background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); transition: transform 0.3s ease;">
                 <!-- Post Header -->
                 <div style="background: linear-gradient(135deg, ${typeInfo.color}, ${typeInfo.color}dd); padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;">
@@ -1072,9 +1106,9 @@ function renderForumPosts() {
                             class="share-btn" style="background: #25D366; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
                             <i class="fab fa-whatsapp"></i> WhatsApp
                         </a>
-                        <a href="mailto:?subject=${shareText}&body=Check out this post: ${decodeURIComponent(shareUrl)}" 
-                            class="share-btn" style="background: #EA4335; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-envelope"></i> Email
+                        <a href="https://www.facebook.com/sharer/sharer.php?u=${shareUrl}" target="_blank" 
+                            class="share-btn" style="background: #1877F2; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fab fa-facebook-f"></i> Facebook
                         </a>
                         <button onclick="copyPostLink(${post.id})" 
                             class="share-btn" style="background: #6c757d; color: white; padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -1128,8 +1162,9 @@ function renderForumPosts() {
                 </div>
             </div>
         `;
-    });
+    }));
 
+    html += postsHtml.join('');
     html += '</div>';
 
     // Keep the empty forum div but hide it
@@ -1145,15 +1180,16 @@ function renderForumPosts() {
     </div>` + html;
 }
 
-// Get comments for a post
-function getPostComments(postId) {
-    const comments = localStorage.getItem(`forumComments_${postId}`);
-    return comments ? JSON.parse(comments) : [];
-}
-
-// Save comments for a post
-function savePostComments(postId, comments) {
-    localStorage.setItem(`forumComments_${postId}`, JSON.stringify(comments));
+// Get comments from API
+async function getPostComments(postId) {
+    try {
+        const response = await fetch(`api/forum_comments.php?post_id=${postId}`);
+        const result = await response.json();
+        return result.success ? result.comments : [];
+    } catch (error) {
+        console.error('Error fetching comments:', error);
+        return [];
+    }
 }
 
 // Toggle comments section visibility
@@ -1165,7 +1201,7 @@ function toggleComments(postId) {
 }
 
 // Add a new comment
-function addComment(postId) {
+async function addComment(postId) {
     const nameInput = document.getElementById(`commenterName-${postId}`);
     const textInput = document.getElementById(`commentText-${postId}`);
 
@@ -1177,45 +1213,47 @@ function addComment(postId) {
         return;
     }
 
-    const comments = getPostComments(postId);
-    const newComment = {
-        id: Date.now(),
-        name: name,
-        text: text,
-        date: new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        })
-    };
+    try {
+        const response = await fetch('api/forum_comments.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ post_id: postId, name, comment: text })
+        });
+        const result = await response.json();
 
-    comments.unshift(newComment);
-    savePostComments(postId, comments);
+        if (result.success) {
+            // Refresh comments
+            const comments = await getPostComments(postId);
 
-    // Update UI
-    const commentsList = document.getElementById(`commentsList-${postId}`);
-    commentsList.innerHTML = renderComments(comments, postId);
+            // Update UI
+            const commentsList = document.getElementById(`commentsList-${postId}`);
+            commentsList.innerHTML = renderComments(comments, postId);
 
-    // Update comment count in button
-    const postCard = document.querySelector(`[data-post-id="${postId}"]`);
-    if (postCard) {
-        const commentBtn = postCard.querySelector('button[onclick^="toggleComments"]');
-        if (commentBtn) {
-            commentBtn.innerHTML = `<i class="fas fa-comments"></i> <span>${comments.length}</span> Comments`;
+            // Update comment count
+            const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+            if (postCard) {
+                const commentBtn = postCard.querySelector('button[onclick^="toggleComments"]');
+                if (commentBtn) {
+                    commentBtn.innerHTML = `<i class="fas fa-comments"></i> <span>${comments.length}</span> Comments`;
+                }
+                const commentHeader = document.querySelector(`#comments-${postId} h4`);
+                if (commentHeader) {
+                    commentHeader.innerHTML = `<i class="fas fa-comments"></i> Comments (${comments.length})`;
+                }
+            }
+
+            // Clear inputs
+            nameInput.value = '';
+            textInput.value = '';
+
+            showNotification('Comment posted successfully!', 'success');
+        } else {
+            showNotification('Failed to post comment.', 'error');
         }
-        const commentHeader = document.querySelector(`#comments-${postId} h4`);
-        if (commentHeader) {
-            commentHeader.innerHTML = `<i class="fas fa-comments"></i> Comments (${comments.length})`;
-        }
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        showNotification('Network error.', 'error');
     }
-
-    // Clear inputs
-    nameInput.value = '';
-    textInput.value = '';
-
-    showNotification('Comment posted successfully!', 'success');
 }
 
 // Render comments HTML
@@ -1360,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize forum
     addForumStyles();
     updateAdminUI();
-    renderForumPosts();
+    asyncRenderForumPosts();
 
     const postForm = document.getElementById('postForm');
     if (postForm) {
@@ -1382,7 +1420,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Pass image data to createPost
-            createPost(type, title, content, currentPostImageData);
+            await createPost(type, title, content, currentPostImageData);
 
             // Reset image preview
             currentPostImageData = null;
@@ -1392,7 +1430,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('imageUploadArea').style.display = 'block';
 
             closePostModal();
-            renderForumPosts();
+            asyncRenderForumPosts();
             showNotification('Post published successfully!', 'success');
         });
     }
