@@ -3,6 +3,9 @@ require_once 'includes/config.php';
 require_once 'includes/auth.php';
 requireLogin();
 
+echo '<div style="background:red;color:white;padding:20px;text-align:center;font-size:24px;font-weight:bold;position:fixed;top:0;left:0;width:100%;z-index:9999;">TESTING 123 - IF YOU SEE THIS, YOU ARE IN THE RIGHT FOLDER</div>';
+echo '<div style="margin-top:80px;"></div>'; // Spacer
+
 $pdo = getDB();
 
 // Get statistics

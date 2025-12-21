@@ -161,10 +161,17 @@ function initCounterAnimation() {
                 observer.unobserve(entry.target);
             }
         });
-    }, { threshold: 0.5 });
+    }, { threshold: 0.1, rootMargin: '50px' });
 
     counters.forEach(counter => {
-        observer.observe(counter);
+        // Check if counter is already in viewport (fallback for page load)
+        const rect = counter.getBoundingClientRect();
+        const isInViewport = rect.top >= 0 && rect.top <= window.innerHeight;
+        if (isInViewport) {
+            animateCounter(counter);
+        } else {
+            observer.observe(counter);
+        }
     });
 }
 
@@ -758,6 +765,84 @@ document.addEventListener('click', function (e) {
 });
 
 /* ========================================
+   Backend Admin Session Check
+   ======================================== */
+
+// Global variable to store admin session data
+let backendAdminData = null;
+
+// Check if admin is logged in via backend
+async function checkBackendAdminSession() {
+    try {
+        const response = await fetch('api/check_admin_session.php', {
+            credentials: 'include' // Important: send cookies with request
+        });
+        const data = await response.json();
+
+        if (data.isAdmin) {
+            backendAdminData = data;
+            showFrontendAdminControls();
+        } else {
+            backendAdminData = null;
+            hideFrontendAdminControls();
+        }
+    } catch (error) {
+        console.error('Error checking admin session:', error);
+        backendAdminData = null;
+    }
+}
+
+// Show admin controls on frontend
+function showFrontendAdminControls() {
+    // Show "Create Post" floating button
+    let adminBtn = document.getElementById('frontendAdminBtn');
+    if (!adminBtn) {
+        // Create floating button
+        adminBtn = document.createElement('button');
+        adminBtn.id = 'frontendAdminBtn';
+        adminBtn.innerHTML = '<i class="fas fa-plus"></i> Create Post';
+        adminBtn.style.cssText = `
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #00A859, #1a5f3c);
+            color: white;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 5px 25px rgba(0,168,89,0.4);
+            z-index: 9999;
+            transition: all 0.3s ease;
+        `;
+
+        adminBtn.onmouseover = () => {
+            adminBtn.style.transform = 'translateY(-3px)';
+            adminBtn.style.boxShadow = '0 8px 30px rgba(0,168,89,0.6)';
+        };
+        adminBtn.onmouseout = () => {
+            adminBtn.style.transform = 'translateY(0)';
+            adminBtn.style.boxShadow = '0 5px 25px rgba(0,168,89,0.4)';
+        };
+
+        adminBtn.onclick = openPostModal;
+        document.body.appendChild(adminBtn);
+    }
+    adminBtn.style.display = 'block';
+}
+
+// Hide admin controls
+function hideFrontendAdminControls() {
+    const adminBtn = document.getElementById('frontendAdminBtn');
+    if (adminBtn) {
+        adminBtn.style.display = 'none';
+    }
+}
+
+
+/* ========================================
    Grassroots Forum Functions
    ======================================== */
 
@@ -921,7 +1006,7 @@ async function createPost(type, title, content, imageData = null) {
         title,
         content,
         image: imageData,
-        author: 'Nelson Ndudi Idoko',
+        author: backendAdminData?.adminName || 'Nelson Ndudi Idoko',
         authorRole: 'Publicity Secretary, Enugu State'
     };
 
@@ -1399,13 +1484,15 @@ document.addEventListener('DOMContentLoaded', function () {
     addForumStyles();
     updateAdminUI();
     asyncRenderForumPosts();
+    checkBackendAdminSession(); // Check if admin is logged in via backend
+
 
     const postForm = document.getElementById('postForm');
     if (postForm) {
-        postForm.addEventListener('submit', function (e) {
+        postForm.addEventListener('submit', async function (e) {
             e.preventDefault();
 
-            if (!isAdminLoggedIn()) {
+            if (!isAdminLoggedIn() && !backendAdminData) {
                 showNotification('You must be logged in as admin to create posts.', 'error');
                 return;
             }

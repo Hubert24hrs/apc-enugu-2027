@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initFormValidation();
     initScrollAnimations();
     initNewsFilter();
+    checkAdminAccess();
 });
 
 /* Navbar Scroll Effect */
@@ -160,10 +161,17 @@ function initCounterAnimation() {
                 observer.unobserve(entry.target);
             }
         });
-    }, { threshold: 0.5 });
+    }, { threshold: 0.1, rootMargin: '50px' });
 
     counters.forEach(counter => {
-        observer.observe(counter);
+        // Check if counter is already in viewport (fallback for page load)
+        const rect = counter.getBoundingClientRect();
+        const isInViewport = rect.top >= 0 && rect.top <= window.innerHeight;
+        if (isInViewport) {
+            animateCounter(counter);
+        } else {
+            observer.observe(counter);
+        }
     });
 }
 
@@ -450,7 +458,7 @@ document.addEventListener('click', function (e) {
 document.addEventListener('DOMContentLoaded', function () {
     const membershipForm = document.getElementById('membershipForm');
     if (membershipForm) {
-        membershipForm.addEventListener('submit', function (e) {
+        membershipForm.addEventListener('submit', async function (e) {
             e.preventDefault();
 
             // Collect form data
@@ -474,33 +482,48 @@ document.addEventListener('DOMContentLoaded', function () {
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
             submitBtn.disabled = true;
 
-            // Simulate form submission (replace with actual API call when deployed)
-            setTimeout(() => {
-                // Show success message
-                const modalBody = document.querySelector('#membershipModal .modal-content');
-                modalBody.innerHTML = `
-                    <div style="padding: 4rem 2rem; text-align: center;">
-                        <div style="font-size: 5rem; margin-bottom: 1.5rem;">✅</div>
-                        <h2 style="color: #00A859; margin-bottom: 1rem;">Registration Successful!</h2>
-                        <p style="color: #666; font-size: 1.1rem; max-width: 400px; margin: 0 auto 2rem; line-height: 1.6;">
-                            Thank you for registering with APC GAT 2027 Enugu State Chapter. 
-                            Your membership application has been received.
-                        </p>
-                        <p style="background: #f0f8f0; padding: 1rem; border-radius: 10px; margin-bottom: 2rem;">
-                            <strong>Membership No:</strong> GAT2027/ENU/${Date.now().toString().slice(-6)}<br>
-                            <small>Please save this number for future reference</small>
-                        </p>
-                        <button onclick="closeMembershipModal(); location.reload();" 
-                            style="padding: 1rem 2rem; background: #00A859; color: white; border: none; border-radius: 10px; font-size: 1rem; cursor: pointer;">
-                            <i class="fas fa-check"></i> Done
-                        </button>
-                    </div>
-                `;
+            try {
+                // Submit to API
+                const response = await fetch('api/submit-membership.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
 
-                // Log data (in production, send to server)
-                console.log('Membership Registration:', data);
+                const result = await response.json();
 
-            }, 2000);
+                if (result.success) {
+                    // Show success message
+                    const modalBody = document.querySelector('#membershipModal .modal-content');
+                    modalBody.innerHTML = `
+                        <div style="padding: 4rem 2rem; text-align: center;">
+                            <div style="font-size: 5rem; margin-bottom: 1.5rem;">✅</div>
+                            <h2 style="color: #00A859; margin-bottom: 1rem;">Registration Successful!</h2>
+                            <p style="color: #666; font-size: 1.1rem; max-width: 400px; margin: 0 auto 2rem; line-height: 1.6;">
+                                Thank you for registering with APC GAT 2027 Enugu State Chapter. 
+                                Your membership application has been received and is pending approval.
+                            </p>
+                            <p style="background: #f0f8f0; padding: 1rem; border-radius: 10px; margin-bottom: 2rem;">
+                                <strong>Membership No:</strong> ${result.membershipNo || 'Pending'}<br>
+                                <small>Please save this number for future reference</small>
+                            </p>
+                            <button onclick="closeMembershipModal(); location.reload();" 
+                                style="padding: 1rem 2rem; background: #00A859; color: white; border: none; border-radius: 10px; font-size: 1rem; cursor: pointer;">
+                                <i class="fas fa-check"></i> Done
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    showNotification(result.message || 'Submission failed. Please try again.', 'error');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Network error. Please try again later.', 'error');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
         });
     }
 });
@@ -742,11 +765,89 @@ document.addEventListener('click', function (e) {
 });
 
 /* ========================================
+   Backend Admin Session Check
+   ======================================== */
+
+// Global variable to store admin session data
+let backendAdminData = null;
+
+// Check if admin is logged in via backend
+async function checkBackendAdminSession() {
+    try {
+        const response = await fetch('api/check_admin_session.php', {
+            credentials: 'include' // Important: send cookies with request
+        });
+        const data = await response.json();
+
+        if (data.isAdmin) {
+            backendAdminData = data;
+            showFrontendAdminControls();
+        } else {
+            backendAdminData = null;
+            hideFrontendAdminControls();
+        }
+    } catch (error) {
+        console.error('Error checking admin session:', error);
+        backendAdminData = null;
+    }
+}
+
+// Show admin controls on frontend
+function showFrontendAdminControls() {
+    // Show "Create Post" floating button
+    let adminBtn = document.getElementById('frontendAdminBtn');
+    if (!adminBtn) {
+        // Create floating button
+        adminBtn = document.createElement('button');
+        adminBtn.id = 'frontendAdminBtn';
+        adminBtn.innerHTML = '<i class="fas fa-plus"></i> Create Post';
+        adminBtn.style.cssText = `
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #00A859, #1a5f3c);
+            color: white;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 5px 25px rgba(0,168,89,0.4);
+            z-index: 9999;
+            transition: all 0.3s ease;
+        `;
+
+        adminBtn.onmouseover = () => {
+            adminBtn.style.transform = 'translateY(-3px)';
+            adminBtn.style.boxShadow = '0 8px 30px rgba(0,168,89,0.6)';
+        };
+        adminBtn.onmouseout = () => {
+            adminBtn.style.transform = 'translateY(0)';
+            adminBtn.style.boxShadow = '0 5px 25px rgba(0,168,89,0.4)';
+        };
+
+        adminBtn.onclick = openPostModal;
+        document.body.appendChild(adminBtn);
+    }
+    adminBtn.style.display = 'block';
+}
+
+// Hide admin controls
+function hideFrontendAdminControls() {
+    const adminBtn = document.getElementById('frontendAdminBtn');
+    if (adminBtn) {
+        adminBtn.style.display = 'none';
+    }
+}
+
+
+/* ========================================
    Grassroots Forum Functions
    ======================================== */
 
 // Forum Admin Password (In production, this should be server-side)
-const ADMIN_PASSWORD = 'Nelson2306';
+const ADMIN_PASSWORD = 'Idokonelson2306';
 
 // Check if admin is logged in
 function isAdminLoggedIn() {
@@ -782,15 +883,35 @@ function adminLogin() {
     }
 }
 
+// Check for admin access via URL parameter or existing session
+function checkAdminAccess() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdminParam = urlParams.get('admin') === 'true';
+    const loginSection = document.getElementById('adminLoginSection');
+
+    // If admin query param is present, show the login button
+    if (isAdminParam || isAdminLoggedIn()) {
+        if (loginSection) {
+            loginSection.style.display = 'block';
+        }
+    }
+}
+
 // Update UI based on admin status
 function updateAdminUI() {
     const adminBar = document.getElementById('forumAdminBar');
     const loginSection = document.querySelector('.admin-login-section');
+    const forumFeatures = document.getElementById('forumFeaturesSection');
 
     if (isAdminLoggedIn()) {
         adminBar.style.display = 'flex';
         adminBar.style.justifyContent = 'center';
         adminBar.style.marginBottom = '2rem';
+
+        // Show Forum Features for admin
+        if (forumFeatures) {
+            forumFeatures.style.display = 'block';
+        }
 
         // Add logout button
         adminBar.innerHTML = `
@@ -804,7 +925,19 @@ function updateAdminUI() {
         loginSection.style.display = 'none';
     } else {
         adminBar.style.display = 'none';
-        loginSection.style.display = 'block';
+
+        // Only show login section if admin param is present
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === 'true') {
+            loginSection.style.display = 'block';
+        } else {
+            loginSection.style.display = 'none';
+        }
+
+        // Hide Forum Features for non-admin
+        if (forumFeatures) {
+            forumFeatures.style.display = 'none';
+        }
     }
 }
 
@@ -819,6 +952,17 @@ function adminLogout() {
 function openPostModal() {
     const modal = document.getElementById('postModal');
     if (modal) {
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Open post creation modal with pre-selected type
+function openPostModalWithType(type) {
+    const modal = document.getElementById('postModal');
+    const typeSelect = document.getElementById('postType');
+    if (modal && typeSelect) {
+        typeSelect.value = type;
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
     }
@@ -843,39 +987,41 @@ document.addEventListener('click', function (e) {
     }
 });
 
-// Get posts from localStorage
-function getForumPosts() {
-    const posts = localStorage.getItem('forumPosts');
-    return posts ? JSON.parse(posts) : [];
+// Get posts from API
+async function getForumPosts() {
+    try {
+        const response = await fetch('api/forum_posts.php');
+        const result = await response.json();
+        return result.success ? result.posts : [];
+    } catch (error) {
+        console.error('Error fetching posts:', error);
+        return [];
+    }
 }
 
-// Save posts to localStorage
-function saveForumPosts(posts) {
-    localStorage.setItem('forumPosts', JSON.stringify(posts));
-}
-
-// Create a new post
-function createPost(type, title, content, imageData = null) {
-    const posts = getForumPosts();
-    const newPost = {
-        id: Date.now(),
-        type: type,
-        title: title,
-        content: content,
-        image: imageData, // Store base64 image data
-        author: 'Nelson Ndudi Idoko',
-        authorRole: 'Publicity Secretary, Enugu State',
-        date: new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        }),
-        likes: 0
+// Create a new post via API
+async function createPost(type, title, content, imageData = null) {
+    const postData = {
+        type,
+        title,
+        content,
+        image: imageData,
+        author: backendAdminData?.adminName || 'Nelson Ndudi Idoko',
+        authorRole: 'Publicity Secretary, Enugu State'
     };
 
-    posts.unshift(newPost); // Add to beginning
-    saveForumPosts(posts);
-    return newPost;
+    try {
+        const response = await fetch('api/forum_posts.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(postData)
+        });
+        const result = await response.json();
+        return result.success ? result.post : null;
+    } catch (error) {
+        console.error('Error creating post:', error);
+        return null;
+    }
 }
 
 // Store the current post image data
@@ -934,16 +1080,25 @@ function likePost(postId) {
     }
 }
 
-// Delete a post (admin only)
-function deletePost(postId) {
+// Delete a post via API
+async function deletePost(postId) {
     if (!isAdminLoggedIn()) return;
 
     if (confirm('Are you sure you want to delete this post?')) {
-        let posts = getForumPosts();
-        posts = posts.filter(p => p.id !== postId);
-        saveForumPosts(posts);
-        renderForumPosts();
-        showNotification('Post deleted successfully.', 'success');
+        try {
+            const response = await fetch(`api/forum_posts.php?id=${postId}`, { method: 'DELETE' });
+            const result = await response.json();
+
+            if (result.success) {
+                renderForumPosts();
+                showNotification('Post deleted successfully.', 'success');
+            } else {
+                showNotification('Failed to delete post.', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            showNotification('Network error.', 'error');
+        }
     }
 }
 
@@ -951,21 +1106,25 @@ function deletePost(postId) {
 function getPostTypeInfo(type) {
     switch (type) {
         case 'announcement':
-            return { icon: '📢', label: 'Announcement', color: '#dc3545' };
+            return { icon: '📢', label: 'Announcement', color: '#004B87' };
         case 'article':
             return { icon: '📰', label: 'Article', color: '#00A859' };
         case 'message':
-            return { icon: '💬', label: 'Message', color: '#004B87' };
+            return { icon: '💬', label: 'Discussion', color: '#6f42c1' };
+        case 'presentation':
+            return { icon: '📊', label: 'Presentation', color: '#00A859' };
+        case 'resource':
+            return { icon: '📥', label: 'Resource', color: '#dc3545' };
         default:
             return { icon: '📝', label: 'Post', color: '#00A859' };
     }
 }
 
 // Render forum posts
-function renderForumPosts() {
+async function asyncRenderForumPosts() {
     const container = document.getElementById('forumPosts');
     const emptyForum = document.getElementById('emptyForum');
-    const posts = getForumPosts();
+    const posts = await getForumPosts();
 
     if (posts.length === 0) {
         emptyForum.style.display = 'block';
@@ -976,14 +1135,15 @@ function renderForumPosts() {
 
     let html = '<div class="posts-grid" style="display: grid; gap: 2rem;">';
 
-    posts.forEach(post => {
+    // Use Promise.all to handle async map
+    const postsHtml = await Promise.all(posts.map(async post => {
         const typeInfo = getPostTypeInfo(post.type);
         const isAdmin = isAdminLoggedIn();
-        const comments = getPostComments(post.id);
+        const comments = await getPostComments(post.id);
         const shareUrl = encodeURIComponent(window.location.href + '#post-' + post.id);
         const shareText = encodeURIComponent(post.title + ' - APC GAT2027 Enugu Forum');
 
-        html += `
+        return `
             <div class="forum-post-card" data-post-id="${post.id}" id="post-${post.id}" style="background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); transition: transform 0.3s ease;">
                 <!-- Post Header -->
                 <div style="background: linear-gradient(135deg, ${typeInfo.color}, ${typeInfo.color}dd); padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;">
@@ -1031,9 +1191,9 @@ function renderForumPosts() {
                             class="share-btn" style="background: #25D366; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
                             <i class="fab fa-whatsapp"></i> WhatsApp
                         </a>
-                        <a href="mailto:?subject=${shareText}&body=Check out this post: ${decodeURIComponent(shareUrl)}" 
-                            class="share-btn" style="background: #EA4335; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-envelope"></i> Email
+                        <a href="https://www.facebook.com/sharer/sharer.php?u=${shareUrl}" target="_blank" 
+                            class="share-btn" style="background: #1877F2; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fab fa-facebook-f"></i> Facebook
                         </a>
                         <button onclick="copyPostLink(${post.id})" 
                             class="share-btn" style="background: #6c757d; color: white; padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -1087,8 +1247,9 @@ function renderForumPosts() {
                 </div>
             </div>
         `;
-    });
+    }));
 
+    html += postsHtml.join('');
     html += '</div>';
 
     // Keep the empty forum div but hide it
@@ -1104,15 +1265,16 @@ function renderForumPosts() {
     </div>` + html;
 }
 
-// Get comments for a post
-function getPostComments(postId) {
-    const comments = localStorage.getItem(`forumComments_${postId}`);
-    return comments ? JSON.parse(comments) : [];
-}
-
-// Save comments for a post
-function savePostComments(postId, comments) {
-    localStorage.setItem(`forumComments_${postId}`, JSON.stringify(comments));
+// Get comments from API
+async function getPostComments(postId) {
+    try {
+        const response = await fetch(`api/forum_comments.php?post_id=${postId}`);
+        const result = await response.json();
+        return result.success ? result.comments : [];
+    } catch (error) {
+        console.error('Error fetching comments:', error);
+        return [];
+    }
 }
 
 // Toggle comments section visibility
@@ -1124,7 +1286,7 @@ function toggleComments(postId) {
 }
 
 // Add a new comment
-function addComment(postId) {
+async function addComment(postId) {
     const nameInput = document.getElementById(`commenterName-${postId}`);
     const textInput = document.getElementById(`commentText-${postId}`);
 
@@ -1136,45 +1298,47 @@ function addComment(postId) {
         return;
     }
 
-    const comments = getPostComments(postId);
-    const newComment = {
-        id: Date.now(),
-        name: name,
-        text: text,
-        date: new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        })
-    };
+    try {
+        const response = await fetch('api/forum_comments.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ post_id: postId, name, comment: text })
+        });
+        const result = await response.json();
 
-    comments.unshift(newComment);
-    savePostComments(postId, comments);
+        if (result.success) {
+            // Refresh comments
+            const comments = await getPostComments(postId);
 
-    // Update UI
-    const commentsList = document.getElementById(`commentsList-${postId}`);
-    commentsList.innerHTML = renderComments(comments, postId);
+            // Update UI
+            const commentsList = document.getElementById(`commentsList-${postId}`);
+            commentsList.innerHTML = renderComments(comments, postId);
 
-    // Update comment count in button
-    const postCard = document.querySelector(`[data-post-id="${postId}"]`);
-    if (postCard) {
-        const commentBtn = postCard.querySelector('button[onclick^="toggleComments"]');
-        if (commentBtn) {
-            commentBtn.innerHTML = `<i class="fas fa-comments"></i> <span>${comments.length}</span> Comments`;
+            // Update comment count
+            const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+            if (postCard) {
+                const commentBtn = postCard.querySelector('button[onclick^="toggleComments"]');
+                if (commentBtn) {
+                    commentBtn.innerHTML = `<i class="fas fa-comments"></i> <span>${comments.length}</span> Comments`;
+                }
+                const commentHeader = document.querySelector(`#comments-${postId} h4`);
+                if (commentHeader) {
+                    commentHeader.innerHTML = `<i class="fas fa-comments"></i> Comments (${comments.length})`;
+                }
+            }
+
+            // Clear inputs
+            nameInput.value = '';
+            textInput.value = '';
+
+            showNotification('Comment posted successfully!', 'success');
+        } else {
+            showNotification('Failed to post comment.', 'error');
         }
-        const commentHeader = document.querySelector(`#comments-${postId} h4`);
-        if (commentHeader) {
-            commentHeader.innerHTML = `<i class="fas fa-comments"></i> Comments (${comments.length})`;
-        }
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        showNotification('Network error.', 'error');
     }
-
-    // Clear inputs
-    nameInput.value = '';
-    textInput.value = '';
-
-    showNotification('Comment posted successfully!', 'success');
 }
 
 // Render comments HTML
@@ -1319,14 +1483,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize forum
     addForumStyles();
     updateAdminUI();
-    renderForumPosts();
+    asyncRenderForumPosts();
+    checkBackendAdminSession(); // Check if admin is logged in via backend
+
 
     const postForm = document.getElementById('postForm');
     if (postForm) {
-        postForm.addEventListener('submit', function (e) {
+        postForm.addEventListener('submit', async function (e) {
             e.preventDefault();
 
-            if (!isAdminLoggedIn()) {
+            if (!isAdminLoggedIn() && !backendAdminData) {
                 showNotification('You must be logged in as admin to create posts.', 'error');
                 return;
             }
@@ -1341,7 +1507,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Pass image data to createPost
-            createPost(type, title, content, currentPostImageData);
+            await createPost(type, title, content, currentPostImageData);
 
             // Reset image preview
             currentPostImageData = null;
@@ -1351,8 +1517,596 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('imageUploadArea').style.display = 'block';
 
             closePostModal();
-            renderForumPosts();
+            asyncRenderForumPosts();
             showNotification('Post published successfully!', 'success');
         });
     }
+
+    // Contact form handler
+    const contactForm = document.getElementById('contactForm');
+    if (contactForm) {
+        contactForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('api/submit-contact.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('Message sent successfully!', 'success');
+                    this.reset();
+                } else {
+                    showNotification(result.message || 'Failed to send message.', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Network error. Please try again.', 'error');
+            }
+
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    }
+
+    // Initialize dynamic news
+    loadDynamicNews();
 });
+
+/* ========================================
+   Dynamic News System
+   ======================================== */
+
+// News data - Updated daily with Nigerian political news, jobs, and recruitment
+const politicalNewsData = [
+    {
+        category: 'breaking',
+        headline: 'Governor Peter Mbah Leads Historic Defection to APC',
+        summary: 'Governor Peter Mbah of Enugu State officially joined the All Progressives Congress with all 24 State House of Assembly members.',
+        source: 'APC National',
+        time: 'Today'
+    },
+    {
+        category: 'jobs',
+        headline: 'NNPC Recruitment 2025: Application Portal Now Open',
+        summary: 'The Nigerian National Petroleum Company has opened applications for graduate trainees and experienced professionals across all departments.',
+        source: 'NNPC Careers',
+        time: 'Today'
+    },
+    {
+        category: 'breaking',
+        headline: 'All Eight Enugu Reps Now in APC After Mass Defection',
+        summary: 'Five House of Representatives members from Enugu State joined the APC, bringing total Enugu lawmakers in the party to eight.',
+        source: 'Premium Times',
+        time: '2 hours ago'
+    },
+    {
+        category: 'recruitment',
+        headline: 'Federal Civil Service Commission Opens Mass Recruitment',
+        summary: 'FCSC announces recruitment of 10,000 graduates across ministries. Application deadline is January 31, 2026.',
+        source: 'FCSC Portal',
+        time: '3 hours ago'
+    },
+    {
+        category: 'politics',
+        headline: 'Senator Kelvin Chukwu Joins APC From Labour Party',
+        summary: 'Senator Kelvin Chukwu representing Enugu East Senatorial District officially defected to the APC.',
+        source: 'Channels TV',
+        time: '4 hours ago'
+    },
+    {
+        category: 'jobs',
+        headline: 'CBN Graduate Trainee Program 2026 - Apply Now',
+        summary: 'Central Bank of Nigeria seeks fresh graduates for its intensive 18-month management trainee program.',
+        source: 'CBN Careers',
+        time: '5 hours ago'
+    },
+    {
+        category: 'national',
+        headline: 'APC Dominance Grows: Multiple Governors Join Ruling Party',
+        summary: 'Following Enugu, governors from Rivers, Taraba, Bayelsa, Delta, and Akwa Ibom states have joined APC.',
+        source: 'Vanguard News',
+        time: '6 hours ago'
+    },
+    {
+        category: 'subscription',
+        headline: 'JAMB 2026: Registration Portal Opens Next Week',
+        summary: 'Joint Admissions and Matriculation Board announces e-registration for 2026 UTME begins December 20th.',
+        source: 'JAMB Official',
+        time: '6 hours ago'
+    },
+    {
+        category: 'events',
+        headline: 'GAT 2027 Enugu Chapter Launches Grassroot Campaign',
+        summary: 'The Grassroot Advocacy for Tinubu 2027 Enugu State Chapter launched its campaign across all 17 LGAs.',
+        source: 'APC GAT2027',
+        time: 'Yesterday'
+    },
+    {
+        category: 'recruitment',
+        headline: 'Nigerian Army Recruitment 2026: 85RRI Exercise Announced',
+        summary: 'Nigerian Army opens portal for 85 Regular Recruit Intake for trades and non-tradesmen/women.',
+        source: 'Nigerian Army',
+        time: 'Yesterday'
+    },
+    {
+        category: 'events',
+        headline: 'Massive Membership Registration Launched Across All LGAs',
+        summary: 'APC GAT 2027 Enugu State kicks off statewide membership registration campaign.',
+        source: 'APC GAT2027',
+        time: 'Yesterday'
+    },
+    {
+        category: 'jobs',
+        headline: 'NDLEA Recruitment: 5,000 Positions Available Nationwide',
+        summary: 'National Drug Law Enforcement Agency recruiting officers, apply via official portal before deadline.',
+        source: 'NDLEA Nigeria',
+        time: '1 day ago'
+    },
+    {
+        category: 'national',
+        headline: 'President Tinubu Announces New Economic Policies for 2026',
+        summary: 'The President outlined key economic reforms expected to boost Nigeria\'s GDP growth.',
+        source: 'NTA News',
+        time: '1 day ago'
+    },
+    {
+        category: 'subscription',
+        headline: 'NIN Registration: New Centers Open in Enugu State',
+        summary: 'NIMC opens 15 new enrollment centers across Enugu State for NIN registration.',
+        source: 'NIMC',
+        time: '1 day ago'
+    },
+    {
+        category: 'politics',
+        headline: 'APC National Convention Sets Date for 2026',
+        summary: 'The ruling party announces plans for its national convention to prepare for 2027 elections.',
+        source: 'ThisDay Live',
+        time: '1 day ago'
+    }
+];
+
+// Nigerian news from live sources - Politics, Jobs, Recruitment
+const liveNewsHeadlines = [
+    { headline: 'Immigration Service Opens Recruitment Portal for 2026', source: 'NIS Portal', time: '15 mins ago', category: 'recruitment' },
+    { headline: 'FG Announces New Infrastructure Projects for South-East Region', source: 'Punch News', time: '30 mins ago', category: 'national' },
+    { headline: 'NYSC Batch A 2026: Online Registration Begins', source: 'NYSC Official', time: '45 mins ago', category: 'subscription' },
+    { headline: 'Minister of Works Inspects Enugu-Onitsha Expressway', source: 'Vanguard', time: '1 hour ago', category: 'development' },
+    { headline: 'Police Force Recruitment: 30,000 Constables Needed', source: 'NPF Recruitment', time: '1.5 hours ago', category: 'jobs' },
+    { headline: 'CBN Releases New Guidelines on Foreign Exchange', source: 'BusinessDay', time: '2 hours ago', category: 'economy' },
+    { headline: 'FRSC Recruitment 2026: Marshal Inspectors Wanted', source: 'FRSC Nigeria', time: '2.5 hours ago', category: 'recruitment' },
+    { headline: 'INEC Begins Preparation for 2027 General Elections', source: 'Channels TV', time: '3 hours ago', category: 'politics' },
+    { headline: 'Scholarship Alert: PTDF Overseas Postgraduate Program', source: 'PTDF', time: '3.5 hours ago', category: 'subscription' },
+    { headline: 'Senate Passes New Bill for Electoral Reform', source: 'Premium Times', time: '4 hours ago', category: 'politics' },
+    { headline: 'DSS Recruitment Exercise: Apply for Field Agent Roles', source: 'DSS Nigeria', time: '4.5 hours ago', category: 'jobs' },
+    { headline: 'APC Welcomes New Members in South-East Expansion', source: 'The Nation', time: '5 hours ago', category: 'politics' },
+    { headline: 'WAEC Registration 2026: Deadline Approaches', source: 'WAEC Nigeria', time: '5.5 hours ago', category: 'subscription' },
+    { headline: 'Nigeria Signs New Trade Agreement with EU Partners', source: 'The Guardian', time: '6 hours ago', category: 'economy' },
+    { headline: 'Education Ministry Announces Scholarship Programs', source: 'Daily Trust', time: '7 hours ago', category: 'education' }
+];
+
+// Get category styling
+function getCategoryStyle(category) {
+    const styles = {
+        'breaking': { bg: '#dc3545', label: '🔴 BREAKING' },
+        'politics': { bg: '#004B87', label: '🏛️ Politics' },
+        'national': { bg: '#6f42c1', label: '🇳🇬 National' },
+        'events': { bg: '#00A859', label: '📅 Events' },
+        'economy': { bg: '#fd7e14', label: '💰 Economy' },
+        'development': { bg: '#20c997', label: '🏗️ Development' },
+        'education': { bg: '#17a2b8', label: '📚 Education' },
+        'jobs': { bg: '#e83e8c', label: '💼 Jobs' },
+        'recruitment': { bg: '#28a745', label: '📋 Recruitment' },
+        'subscription': { bg: '#6610f2', label: '✍️ Registration' }
+    };
+    return styles[category] || { bg: '#00A859', label: '📰 News' };
+}
+
+// Load dynamic news on page load
+async function loadDynamicNews() {
+    // Show loading state
+    const container = document.getElementById('dynamicNewsContainer');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 3rem;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #00A859;"></i>
+                <p style="color: #666; margin-top: 1rem;">Loading latest news...</p>
+            </div>
+        `;
+    }
+
+    // Try to fetch live news from RSS feeds
+    try {
+        await fetchLiveRSSNews();
+    } catch (error) {
+        console.log('Using cached news data:', error);
+    }
+
+    // Render the news
+    renderMainNews();
+    renderLiveNews();
+    renderNewsTicker();
+}
+
+// RSS Feed sources for Nigerian news
+const RSS_FEEDS = [
+    { url: 'https://punchng.com/feed/', source: 'Punch News', category: 'politics' },
+    { url: 'https://www.vanguardngr.com/feed/', source: 'Vanguard', category: 'national' },
+    { url: 'https://www.premiumtimesng.com/feed', source: 'Premium Times', category: 'breaking' },
+    { url: 'https://dailypost.ng/feed/', source: 'Daily Post', category: 'politics' },
+    { url: 'https://www.thecable.ng/feed', source: 'The Cable', category: 'economy' }
+];
+
+// Fetch live news from RSS feeds
+async function fetchLiveRSSNews() {
+    const RSS2JSON_API = 'https://api.rss2json.com/v1/api.json?rss_url=';
+    const fetchedNews = [];
+    const fetchedLiveNews = [];
+
+    // Fetch from multiple sources
+    const fetchPromises = RSS_FEEDS.slice(0, 3).map(async (feed) => {
+        try {
+            const response = await fetch(RSS2JSON_API + encodeURIComponent(feed.url), {
+                mode: 'cors'
+            });
+            const data = await response.json();
+
+            if (data.status === 'ok' && data.items) {
+                data.items.slice(0, 5).forEach((item, index) => {
+                    const newsItem = {
+                        category: categorizeNews(item.title),
+                        headline: cleanTitle(item.title),
+                        summary: cleanSummary(item.description),
+                        source: feed.source,
+                        time: getRelativeTime(item.pubDate),
+                        link: item.link
+                    };
+
+                    if (index < 2) {
+                        fetchedNews.push(newsItem);
+                    } else {
+                        fetchedLiveNews.push({
+                            headline: newsItem.headline,
+                            source: newsItem.source,
+                            time: newsItem.time,
+                            category: newsItem.category,
+                            link: newsItem.link
+                        });
+                    }
+                });
+            }
+        } catch (err) {
+            console.log(`Failed to fetch from ${feed.source}:`, err);
+        }
+    });
+
+    await Promise.allSettled(fetchPromises);
+
+    // Update news arrays if we got new data
+    if (fetchedNews.length > 0) {
+        // Merge fetched news with existing data
+        politicalNewsData.unshift(...fetchedNews.slice(0, 4));
+        // Keep array manageable
+        if (politicalNewsData.length > 20) {
+            politicalNewsData.splice(20);
+        }
+    }
+
+    if (fetchedLiveNews.length > 0) {
+        liveNewsHeadlines.unshift(...fetchedLiveNews.slice(0, 5));
+        if (liveNewsHeadlines.length > 15) {
+            liveNewsHeadlines.splice(15);
+        }
+    }
+}
+
+// Categorize news based on keywords
+function categorizeNews(title) {
+    const lower = title.toLowerCase();
+    if (lower.includes('breaking') || lower.includes('just in')) return 'breaking';
+    if (lower.includes('recruit') || lower.includes('hiring') || lower.includes('vacancy')) return 'recruitment';
+    if (lower.includes('job') || lower.includes('career') || lower.includes('employment')) return 'jobs';
+    if (lower.includes('registration') || lower.includes('apply') || lower.includes('portal')) return 'subscription';
+    if (lower.includes('apc') || lower.includes('pdp') || lower.includes('election') || lower.includes('governor') || lower.includes('senate') || lower.includes('tinubu')) return 'politics';
+    if (lower.includes('economy') || lower.includes('naira') || lower.includes('cbn') || lower.includes('inflation')) return 'economy';
+    if (lower.includes('education') || lower.includes('university') || lower.includes('school')) return 'education';
+    return 'national';
+}
+
+// Clean HTML from title
+function cleanTitle(title) {
+    return title.replace(/<[^>]*>/g, '').trim().substring(0, 120);
+}
+
+// Clean and truncate summary
+function cleanSummary(html) {
+    const text = html.replace(/<[^>]*>/g, '').trim();
+    return text.substring(0, 200) + (text.length > 200 ? '...' : '');
+}
+
+// Get relative time from date
+function getRelativeTime(dateStr) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins} mins ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
+}
+
+// Render main news section - Enhanced with highlighted captions (no images)
+function renderMainNews() {
+    const container = document.getElementById('dynamicNewsContainer');
+    if (!container) return;
+
+    let html = '<div class="news-headlines-container">';
+
+    politicalNewsData.forEach((news, index) => {
+        const style = getCategoryStyle(news.category);
+        const isFeatured = index === 0;
+
+        html += `
+            <div class="news-headline-card ${isFeatured ? 'featured-news' : ''}" onclick="openNewsModal(${index}, 'main')">
+                <div class="news-category-badge" style="background: ${style.bg};">
+                    ${style.label}
+                </div>
+                <h4 class="news-headline-text ${isFeatured ? 'featured-headline' : ''}">${news.headline}</h4>
+                <p class="news-summary-text">${news.summary}</p>
+                <div class="news-meta-info">
+                    <span class="news-time"><i class="far fa-clock"></i> ${news.time}</span>
+                    <span class="news-source"><i class="far fa-newspaper"></i> ${news.source}</span>
+                    ${news.link ? '<span class="news-link-indicator"><i class="fas fa-external-link-alt"></i></span>' : ''}
+                </div>
+                <div class="news-read-more">
+                    <span>Read more <i class="fas fa-chevron-right"></i></span>
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Render live news headlines - Enhanced with highlighted captions (no images)
+function renderLiveNews() {
+    const container = document.getElementById('liveNewsContainer');
+    if (!container) return;
+
+    let html = '';
+
+    liveNewsHeadlines.forEach((news, index) => {
+        const style = getCategoryStyle(news.category);
+
+        html += `
+            <div class="live-news-card" onclick="openNewsModal(${index}, 'live')">
+                <div class="live-news-badge" style="background: ${style.bg};">${style.label}</div>
+                <div class="live-news-content">
+                    <h5 class="live-news-headline">${news.headline}</h5>
+                    <div class="live-news-meta">
+                        <span class="live-news-source">${news.source}</span>
+                        <span class="live-news-time">${news.time}</span>
+                        ${news.link ? '<span class="live-news-link"><i class="fas fa-external-link-alt"></i></span>' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Render news ticker
+function renderNewsTicker() {
+    const ticker = document.getElementById('tickerContent');
+    if (!ticker) return;
+
+    let html = '';
+    politicalNewsData.slice(0, 5).forEach((news, index) => {
+        html += `<span ${index > 0 ? 'style="margin-left: 3rem;"' : ''}>📢 ${news.headline}</span>`;
+    });
+
+    ticker.innerHTML = html;
+}
+
+// Load more / refresh news from live RSS feeds
+async function loadMoreNews() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching live news...';
+    btn.disabled = true;
+
+    try {
+        // Fetch fresh news from RSS feeds
+        await fetchLiveRSSNews();
+        renderMainNews();
+        renderLiveNews();
+        renderNewsTicker();
+        showNotification('News updated with latest headlines!', 'success');
+    } catch (error) {
+        console.log('Refresh error:', error);
+        // Shuffle existing news as fallback
+        liveNewsHeadlines.sort(() => Math.random() - 0.5);
+        renderLiveNews();
+        showNotification('Showing cached news', 'success');
+    }
+
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+}
+
+// Add pulse animation for live feed badge
+if (!document.querySelector('#news-pulse-styles')) {
+    const style = document.createElement('style');
+    style.id = 'news-pulse-styles';
+    style.textContent = `
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .news-headline-card:hover h4 {
+            color: #00A859 !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Open news modal with full details
+function openNewsModal(index, type) {
+    const news = type === 'main' ? politicalNewsData[index] : liveNewsHeadlines[index];
+    if (!news) return;
+
+    const style = getCategoryStyle(news.category);
+
+    // Create modal HTML
+    const modalHTML = `
+        <div id="newsDetailModal" onclick="closeNewsModal(event)" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            animation: fadeIn 0.3s ease;
+        ">
+            <div onclick="event.stopPropagation()" style="
+                background: white;
+                max-width: 700px;
+                width: 100%;
+                max-height: 90vh;
+                overflow-y: auto;
+                border-radius: 20px;
+                position: relative;
+                animation: slideUp 0.3s ease;
+            ">
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, ${style.bg}, ${style.bg}dd); padding: 2rem; border-radius: 20px 20px 0 0;">
+                    <button onclick="closeNewsModal(event)" style="
+                        position: absolute;
+                        top: 1rem;
+                        right: 1rem;
+                        background: rgba(255,255,255,0.2);
+                        border: none;
+                        color: white;
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        font-size: 1.5rem;
+                    ">&times;</button>
+                    <span style="background: white; color: ${style.bg}; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">
+                        ${style.label}
+                    </span>
+                    <h2 style="color: white; margin: 1.5rem 0 0.5rem; font-size: 1.5rem; line-height: 1.4;">
+                        ${news.headline}
+                    </h2>
+                    <div style="color: rgba(255,255,255,0.9); font-size: 0.9rem;">
+                        <span><i class="far fa-newspaper"></i> ${news.source}</span>
+                        <span style="margin-left: 1.5rem;"><i class="far fa-clock"></i> ${news.time}</span>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 2rem;">
+                    <p style="color: #333; font-size: 1.1rem; line-height: 1.8; margin: 0 0 1.5rem;">
+                        ${news.summary || 'Click the button below to read the full story on the source website.'}
+                    </p>
+                    
+                    ${news.link ? `
+                        <div style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); padding: 1.5rem; border-radius: 15px; text-align: center;">
+                            <p style="color: #666; margin: 0 0 1rem;"><i class="fas fa-external-link-alt"></i> This news has an external source link</p>
+                            <a href="${news.link}" target="_blank" rel="noopener noreferrer" style="
+                                display: inline-block;
+                                background: linear-gradient(135deg, #00A859, #1a5f3c);
+                                color: white;
+                                padding: 1rem 2rem;
+                                border-radius: 30px;
+                                text-decoration: none;
+                                font-weight: 600;
+                                font-size: 1rem;
+                            ">
+                                <i class="fas fa-arrow-right"></i> Read Full Story on ${news.source}
+                            </a>
+                        </div>
+                    ` : `
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 15px; text-align: center;">
+                            <p style="color: #666; margin: 0;"><i class="fas fa-info-circle"></i> No external link available for this news item</p>
+                        </div>
+                    `}
+                    
+                    <!-- Share Buttons -->
+                    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #eee;">
+                        <p style="color: #888; margin: 0 0 1rem; font-size: 0.9rem;"><i class="fas fa-share-alt"></i> Share this news:</p>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(news.headline)}${news.link ? '&url=' + encodeURIComponent(news.link) : ''}" target="_blank" 
+                                style="background: #1DA1F2; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem;">
+                                <i class="fab fa-twitter"></i> Twitter
+                            </a>
+                            <a href="https://wa.me/?text=${encodeURIComponent(news.headline + (news.link ? ' ' + news.link : ''))}" target="_blank" 
+                                style="background: #25D366; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem;">
+                                <i class="fab fa-whatsapp"></i> WhatsApp
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.style.overflow = 'hidden';
+}
+
+// Close news modal
+function closeNewsModal(event) {
+    if (event) event.stopPropagation();
+    const modal = document.getElementById('newsDetailModal');
+    if (modal) {
+        modal.remove();
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// Add modal animation styles
+if (!document.querySelector('#news-modal-styles')) {
+    const modalStyle = document.createElement('style');
+    modalStyle.id = 'news-modal-styles';
+    modalStyle.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(modalStyle);
+}
