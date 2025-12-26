@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
     initScrollAnimations();
     initNewsFilter();
     checkAdminAccess();
+    // Load forum posts from database
+    asyncRenderForumPosts();
 });
 
 /* Navbar Scroll Effect */
@@ -1144,85 +1146,91 @@ async function asyncRenderForumPosts() {
         const shareText = encodeURIComponent(post.title + ' - APC GAT2027 Enugu Forum');
 
         return `
-            <div class="forum-post-card" data-post-id="${post.id}" id="post-${post.id}" style="background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); transition: transform 0.3s ease;">
-                <!-- Post Header -->
-                <div style="background: linear-gradient(135deg, ${typeInfo.color}, ${typeInfo.color}dd); padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;">
-                    <span style="background: white; color: ${typeInfo.color}; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">
-                        ${typeInfo.icon} ${typeInfo.label}
-                    </span>
-                    <span style="color: white; font-size: 0.9rem;">
-                        <i class="far fa-calendar"></i> ${post.date}
-                    </span>
+            <div class="forum-post-card" data-post-id="${post.id}" id="post-${post.id}" style="background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); transition: transform 0.3s ease; margin-bottom: 1.5rem;">
+                <!-- Post Header - Always Visible -->
+                <div class="post-header-clickable" onclick="togglePostExpand(${post.id})" style="cursor: pointer; background: linear-gradient(135deg, ${typeInfo.color}, ${typeInfo.color}dd); padding: 1.5rem; transition: all 0.3s ease;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                        <span style="background: white; color: ${typeInfo.color}; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">
+                            ${typeInfo.icon} ${typeInfo.label}
+                        </span>
+                        <span style="color: white; font-size: 0.9rem;">
+                            <i class="far fa-calendar"></i> ${post.date}
+                        </span>
+                    </div>
+                    <h3 style="color: white; margin: 0; font-size: 1.3rem; line-height: 1.4;">${post.title}</h3>
+                    <div style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 35px; height: 35px; border-radius: 50%; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; color: ${typeInfo.color}; font-weight: bold; font-size: 0.9rem;">
+                                ${post.author.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </div>
+                            <div>
+                                <strong style="color: white; font-size: 0.9rem; display: block;">${post.author}</strong>
+                                <span style="color: rgba(255,255,255,0.9); font-size: 0.8rem;">${post.author_role}</span>
+                            </div>
+                        </div>
+                        <div id="expand-icon-${post.id}" style="color: white; font-size: 1.2rem; transition: transform 0.3s ease;">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
                 </div>
                 
-                <!-- Post Content -->
-                <div style="padding: 2rem;">
-                    <h3 style="color: #1a5f3c; margin-bottom: 1rem; font-size: 1.5rem;">${post.title}</h3>
-                    ${post.image ? `
-                        <div style="margin-bottom: 1.5rem;">
-                            <img src="${post.image}" alt="Post image" 
-                                style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 15px; cursor: pointer; box-shadow: 0 5px 20px rgba(0,0,0,0.1);"
-                                onclick="openImageModal('${post.image.replace(/'/g, "\\'")}')">
-                        </div>
-                    ` : ''}
-                    <p style="color: #555; line-height: 1.8; white-space: pre-wrap;">${post.content}</p>
+                <!-- Post Content - Collapsible -->
+                <div id="post-content-${post.id}" style="display: none; transition: all 0.3s ease;">
+                    <div style="padding: 2rem;">
+                        ${post.image ? `
+                            <div style="margin-bottom: 1.5rem;">
+                                <img src="${post.image}" alt="Post image" 
+                                    style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 15px; cursor: pointer; box-shadow: 0 5px 20px rgba(0,0,0,0.1);"
+                                    onclick="openImageModal('${post.image.replace(/'/g, "\\'")}')">
+                            </div>
+                        ` : ''}
+                        <p style="color: #555; line-height: 1.8; white-space: pre-wrap; font-size: 1.05rem;">${post.content}</p>
+                    </div>
                     
-                    <!-- Author Info -->
-                    <div style="display: flex; align-items: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #eee;">
-                        <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #00A859, #1a5f3c); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;">
-                            ${post.author.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    <!-- Share Buttons -->
+                    <div style="padding: 1rem 2rem; border-top: 1px solid #eee; background: #fafafa;">
+                        <p style="margin: 0 0 0.75rem; font-weight: 600; color: #333; font-size: 0.9rem;"><i class="fas fa-share-alt"></i> Share this post:</p>
+                        <div class="share-buttons" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}" target="_blank" 
+                                class="share-btn" style="background: #1DA1F2; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fab fa-twitter"></i> Twitter
+                            </a>
+                            <a href="https://wa.me/?text=${shareText}%20${shareUrl}" target="_blank" 
+                                class="share-btn" style="background: #25D366; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fab fa-whatsapp"></i> WhatsApp
+                            </a>
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=${shareUrl}" target="_blank" 
+                                class="share-btn" style="background: #1877F2; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fab fa-facebook-f"></i> Facebook
+                            </a>
+                            <button onclick="copyPostLink(${post.id})" 
+                                class="share-btn" style="background: #6c757d; color: white; padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-link"></i> Copy Link
+                            </button>
                         </div>
-                        <div style="margin-left: 1rem;">
-                            <strong style="color: #1a5f3c;">${post.author}</strong>
-                            <p style="margin: 0; color: #666; font-size: 0.9rem;">${post.authorRole}</p>
+                    </div>
+                    
+                    <!-- Post Footer with Like -->
+                    <div style="background: #f8f9fa; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <button class="like-btn" onclick="likePostPersistent(${post.id}, event)" 
+                                style="background: none; border: 2px solid #00A859; color: #00A859; padding: 0.5rem 1.5rem; border-radius: 25px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease;">
+                                <i class="fas fa-heart"></i>
+                                <span class="like-count" id="like-count-${post.id}">${post.likes}</span> Likes
+                            </button>
+                            <button onclick="toggleComments(${post.id})" 
+                                style="background: none; border: 2px solid #004B87; color: #004B87; padding: 0.5rem 1.5rem; border-radius: 25px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease;">
+                                <i class="fas fa-comments"></i>
+                                <span>${comments.length}</span> Comments
+                            </button>
                         </div>
+                        ${isAdmin ? `
+                            <button onclick="deletePost(${post.id})" 
+                                style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9rem;">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        ` : ''}
                     </div>
-                </div>
-                
-                <!-- Share Buttons -->
-                <div style="padding: 1rem 2rem; border-top: 1px solid #eee; background: #fafafa;">
-                    <p style="margin: 0 0 0.75rem; font-weight: 600; color: #333; font-size: 0.9rem;"><i class="fas fa-share-alt"></i> Share this post:</p>
-                    <div class="share-buttons" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                        <a href="https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}" target="_blank" 
-                            class="share-btn" style="background: #1DA1F2; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fab fa-twitter"></i> Twitter
-                        </a>
-                        <a href="https://wa.me/?text=${shareText}%20${shareUrl}" target="_blank" 
-                            class="share-btn" style="background: #25D366; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fab fa-whatsapp"></i> WhatsApp
-                        </a>
-                        <a href="https://www.facebook.com/sharer/sharer.php?u=${shareUrl}" target="_blank" 
-                            class="share-btn" style="background: #1877F2; color: white; padding: 0.5rem 1rem; border-radius: 20px; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fab fa-facebook-f"></i> Facebook
-                        </a>
-                        <button onclick="copyPostLink(${post.id})" 
-                            class="share-btn" style="background: #6c757d; color: white; padding: 0.5rem 1rem; border-radius: 20px; border: none; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-link"></i> Copy Link
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Post Footer with Like -->
-                <div style="background: #f8f9fa; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-                    <div style="display: flex; gap: 1rem; align-items: center;">
-                        <button class="like-btn" onclick="likePost(${post.id})" 
-                            style="background: none; border: 2px solid #00A859; color: #00A859; padding: 0.5rem 1.5rem; border-radius: 25px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease;">
-                            <i class="fas fa-heart"></i>
-                            <span class="like-count">${post.likes}</span> Likes
-                        </button>
-                        <button onclick="toggleComments(${post.id})" 
-                            style="background: none; border: 2px solid #004B87; color: #004B87; padding: 0.5rem 1.5rem; border-radius: 25px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease;">
-                            <i class="fas fa-comments"></i>
-                            <span>${comments.length}</span> Comments
-                        </button>
-                    </div>
-                    ${isAdmin ? `
-                        <button onclick="deletePost(${post.id})" 
-                            style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.9rem;">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    ` : ''}
-                </div>
                 
                 <!-- Comments Section -->
                 <div id="comments-${post.id}" class="comments-section" style="display: none; padding: 1.5rem 2rem; background: #f0f2f5; border-top: 1px solid #ddd;">
@@ -1378,6 +1386,62 @@ function copyPostLink(postId) {
         document.body.removeChild(textArea);
         showNotification('Link copied to clipboard!', 'success');
     });
+}
+
+// Toggle post expand/collapse
+function togglePostExpand(postId) {
+    const contentDiv = document.getElementById(`post-content-${postId}`);
+    const expandIcon = document.getElementById(`expand-icon-${postId}`);
+
+    if (contentDiv.style.display === 'none') {
+        // Expand
+        contentDiv.style.display = 'block';
+        expandIcon.innerHTML = '<i class="fas fa-chevron-up"></i>';
+        expandIcon.style.transform = 'rotate(180deg)';
+    } else {
+        // Collapse
+        contentDiv.style.display = 'none';
+        expandIcon.innerHTML = '<i class="fas fa-chevron-down"></i>';
+        expandIcon.style.transform = 'rotate(0deg)';
+    }
+}
+
+// Like a post with persistent database save
+async function likePostPersistent(postId, event) {
+    if (event) event.stopPropagation();
+
+    try {
+        const response = await fetch('api/like_post.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ post_id: postId })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            // Update UI with new like count
+            const likeCountElement = document.getElementById(`like-count-${postId}`);
+            if (likeCountElement) {
+                likeCountElement.textContent = result.likes;
+
+                // Add animation
+                const btn = likeCountElement.closest('.like-btn');
+                btn.style.transform = 'scale(1.1)';
+                btn.style.borderColor = '#ff0066';
+                btn.style.color = '#ff0066';
+                setTimeout(() => {
+                    btn.style.transform = 'scale(1)';
+                    setTimeout(() => {
+                        btn.style.borderColor = '#00A859';
+                        btn.style.color = '#00A859';
+                    }, 200);
+                }, 300);
+            }
+        }
+    } catch (error) {
+        console.error('Error liking post:', error);
+        showNotification('Could not like post. Please try again.', 'error');
+    }
 }
 
 // Open image in full-screen modal
